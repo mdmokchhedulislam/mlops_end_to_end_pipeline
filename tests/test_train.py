@@ -62,7 +62,7 @@ def test_train_model(tmp_path, monkeypatch):
     model_dir.mkdir()
 
     monkeypatch.setattr(
-        "src.train.MODEL_DIR",
+        "src.training.train.MODEL_DIR",
         str(model_dir),
     )
 
