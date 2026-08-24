@@ -7,7 +7,7 @@ from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 
-from src.training.train import get_models, train_model
+from fraud_detector.models.train import get_models, train_model
 
 
 def test_get_models():

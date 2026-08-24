@@ -1,7 +1,7 @@
 import mlflow
 from mlflow import MlflowClient
 
-from src.evaluation.evaluate import evaluate_models
+from fraud_detector.models.evaluate import evaluate_models
 # ==========================================
 # Configuration
 # ==========================================

@@ -1,6 +1,6 @@
 import sys
 
-from evaluate import evaluate_models
+from fraud_detector.models.evaluate import evaluate_models
 
 
 # ==========================================
