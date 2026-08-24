@@ -36,7 +36,10 @@ jobs:
           pip install -r requirements.txt
           pip install ruff
 
-      - name: Run Ruff
+      - name: Run Ruff Fix
+        run: ruff check . --fix
+
+      - name: Verify Ruff
         run: ruff check .
 
 
@@ -51,6 +54,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Checkout repository
         uses: actions/checkout@v4

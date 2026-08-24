@@ -24,8 +24,6 @@ def register_model():
         MLFLOW_TRACKING_URI
     )
 
-    client = MlflowClient()
-
     # ======================================
     # Get latest experiment results
     # ======================================
