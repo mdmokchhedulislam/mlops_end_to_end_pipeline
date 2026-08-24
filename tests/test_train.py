@@ -1,17 +1,17 @@
-import os
-
 import mlflow
 import pandas as pd
+
+from unittest.mock import MagicMock
+
 from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-
-# from src.train import get_models, train_model
 
 from src.training.train import get_models, train_model
 
 
 def test_get_models():
+
     models = get_models()
 
     expected_models = {
@@ -27,6 +27,7 @@ def test_get_models():
 
 
 def test_train_model(tmp_path, monkeypatch):
+
     # -------------------------
     # Create test dataset
     # -------------------------
@@ -41,7 +42,12 @@ def test_train_model(tmp_path, monkeypatch):
 
     X = pd.DataFrame(
         X,
-        columns=["feature_1", "feature_2", "feature_3", "feature_4"],
+        columns=[
+            "feature_1",
+            "feature_2",
+            "feature_3",
+            "feature_4",
+        ],
     )
 
     y = pd.Series(y)
@@ -59,6 +65,7 @@ def test_train_model(tmp_path, monkeypatch):
     # -------------------------
 
     model_dir = tmp_path / "models"
+
     model_dir.mkdir()
 
     monkeypatch.setattr(
@@ -67,9 +74,36 @@ def test_train_model(tmp_path, monkeypatch):
     )
 
     # -------------------------
-    # Prevent real MLflow model upload
+    # Mock MLflow
     # -------------------------
 
+    mock_run = MagicMock()
+
+    mock_run.__enter__.return_value = mock_run
+    mock_run.__exit__.return_value = None
+
+    # Mock MLflow start_run
+    monkeypatch.setattr(
+        mlflow,
+        "start_run",
+        lambda *args, **kwargs: mock_run,
+    )
+
+    # Mock MLflow parameter logging
+    monkeypatch.setattr(
+        mlflow,
+        "log_param",
+        lambda *args, **kwargs: None,
+    )
+
+    # Mock MLflow metric logging
+    monkeypatch.setattr(
+        mlflow,
+        "log_metrics",
+        lambda *args, **kwargs: None,
+    )
+
+    # Mock MLflow model logging
     monkeypatch.setattr(
         mlflow.sklearn,
         "log_model",
@@ -77,24 +111,16 @@ def test_train_model(tmp_path, monkeypatch):
     )
 
     # -------------------------
-    # Use local MLflow tracking
-    # -------------------------
-
-    mlflow.set_tracking_uri(
-        f"file://{tmp_path}/mlruns"
-    )
-
-    mlflow.set_experiment(
-        "test-fraud-detection"
-    )
-
-    # -------------------------
-    # Train model
+    # Create model
     # -------------------------
 
     model = LogisticRegression(
         max_iter=1000
     )
+
+    # -------------------------
+    # Train model
+    # -------------------------
 
     train_model(
         "test_logistic_regression",
@@ -114,4 +140,5 @@ def test_train_model(tmp_path, monkeypatch):
     )
 
     assert model_path.exists()
+
     assert model_path.stat().st_size > 0
