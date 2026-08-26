@@ -1,0 +1,329 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+
+metadata:
+  name: mlops-training-pipeline
+  namespace: argo
+
+spec:
+
+  serviceAccountName: mlops-workflow
+
+  entrypoint: mlops-pipeline
+
+  arguments:
+    parameters:
+
+      - name: image
+        value: "mdmokchhedulislam/mlops-end-to-end:latest"
+
+      - name: experiment-name
+        value: "fraud-detection"
+
+      - name: model-name
+        value: "fraud-detection-model"
+
+  templates:
+
+    # ==========================================================
+    # MAIN PIPELINE
+    # ==========================================================
+
+    - name: mlops-pipeline
+
+      dag:
+
+        tasks:
+
+          # ----------------------------------------------------
+          # 1. DATA VALIDATION
+          # ----------------------------------------------------
+
+          - name: data-validation
+
+            template: data-validation
+
+
+          # ----------------------------------------------------
+          # 2. PREPROCESSING
+          # ----------------------------------------------------
+
+          - name: preprocess
+
+            dependencies:
+              - data-validation
+
+            template: preprocess
+
+
+          # ----------------------------------------------------
+          # 3. TRAINING
+          # ----------------------------------------------------
+
+          - name: train
+
+            dependencies:
+              - preprocess
+
+            template: train
+
+
+          # ----------------------------------------------------
+          # 4. EVALUATION
+          # ----------------------------------------------------
+
+          - name: evaluate
+
+            dependencies:
+              - train
+
+            template: evaluate
+
+
+          # ----------------------------------------------------
+          # 5. QUALITY GATE
+          # ----------------------------------------------------
+
+          - name: quality-gate
+
+            dependencies:
+              - evaluate
+
+            template: quality-gate
+
+
+          # ----------------------------------------------------
+          # 6. REGISTER MODEL
+          # ----------------------------------------------------
+
+          - name: register-model
+
+            dependencies:
+              - quality-gate
+
+            template: register-model
+
+
+    # ==========================================================
+    # DATA VALIDATION
+    # ==========================================================
+
+    - name: data-validation
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+
+          - python
+
+        args:
+
+          - "-m"
+          - "src.data.validate"
+
+        env:
+
+          - name: MLFLOW_TRACKING_URI
+            value: "http://mlflow.argo.svc.cluster.local:5000"
+
+
+    # ==========================================================
+    # PREPROCESS
+    # ==========================================================
+
+    - name: preprocess
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+
+          - python
+
+        args:
+
+          - "-m"
+          - "src.data.preprocess"
+
+        env:
+
+          - name: MLFLOW_TRACKING_URI
+            value: "http://mlflow.argo.svc.cluster.local:5000"
+
+
+    # ==========================================================
+    # TRAIN
+    # ==========================================================
+
+    - name: train
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+
+          - python
+
+        args:
+
+          - "-m"
+          - "src.training.train"
+
+        env:
+
+          - name: MLFLOW_TRACKING_URI
+            value: "http://mlflow.argo.svc.cluster.local:5000"
+
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: "{{workflow.parameters.experiment-name}}"
+
+      outputs:
+
+        artifacts:
+
+          - name: trained-model
+
+            path: /app/artifacts
+
+
+    # ==========================================================
+    # EVALUATE
+    # ==========================================================
+
+    - name: evaluate
+
+      inputs:
+
+        artifacts:
+
+          - name: trained-model
+
+            from: "{{tasks.train.outputs.artifacts.trained-model}}"
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+
+          - python
+
+        args:
+
+          - "-m"
+          - "src.evaluation.evaluate"
+
+        env:
+
+          - name: MLFLOW_TRACKING_URI
+            value: "http://mlflow.argo.svc.cluster.local:5000"
+
+
+      outputs:
+
+        parameters:
+
+          - name: accuracy
+
+            valueFrom:
+
+              path: /app/artifacts/accuracy.txt
+
+          - name: f1-score
+
+            valueFrom:
+
+              path: /app/artifacts/f1_score.txt
+
+
+    # ==========================================================
+    # QUALITY GATE
+    # ==========================================================
+
+    - name: quality-gate
+
+      inputs:
+
+        parameters:
+
+          - name: accuracy
+
+            value: "{{tasks.evaluate.outputs.parameters.accuracy}}"
+
+          - name: f1-score
+
+            value: "{{tasks.evaluate.outputs.parameters.f1-score}}"
+
+      script:
+
+        image: python:3.12-slim
+
+        command:
+
+          - python
+
+        source: |
+
+          accuracy = float("{{inputs.parameters.accuracy}}")
+
+          f1_score = float("{{inputs.parameters.f1-score}}")
+
+          print("================================")
+          print("MODEL QUALITY GATE")
+          print("================================")
+
+          print(f"Accuracy : {accuracy}")
+          print(f"F1 Score : {f1_score}")
+
+          MIN_ACCURACY = 0.80
+          MIN_F1 = 0.75
+
+          if accuracy < MIN_ACCURACY:
+
+              print("❌ Accuracy quality gate failed")
+
+              raise Exception(
+                  f"Accuracy {accuracy} < {MIN_ACCURACY}"
+              )
+
+          if f1_score < MIN_F1:
+
+              print("❌ F1 score quality gate failed")
+
+              raise Exception(
+                  f"F1 Score {f1_score} < {MIN_F1}"
+              )
+
+          print("✅ Quality Gate PASSED")
+
+
+    # ==========================================================
+    # REGISTER MODEL
+    # ==========================================================
+
+    - name: register-model
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+
+          - python
+
+        args:
+
+          - "-m"
+          - "src.model.register"
+
+        env:
+
+          - name: MLFLOW_TRACKING_URI
+            value: "http://mlflow.argo.svc.cluster.local:5000"
+
+          - name: MODEL_NAME
+            value: "{{workflow.parameters.model-name}}"

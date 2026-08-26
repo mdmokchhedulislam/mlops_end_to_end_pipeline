@@ -45,7 +45,7 @@ def generate_data():
     )
 
     df.to_csv(
-        "data/raw/transactions.csv",
+        "data/source/transactions.csv",
         index=False
     )
 

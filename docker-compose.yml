@@ -1,0 +1,221 @@
+services:
+
+  # ============================================================
+  # FastAPI - Fraud Detection API
+  # ============================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: fraud-api
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    expose:
+      - "8000"
+
+    depends_on:
+      mlflow:
+        condition: service_healthy
+
+    networks:
+      - mlops
+
+
+  # ============================================================
+  # Nginx - Reverse Proxy
+  # ============================================================
+  nginx:
+    image: nginx:alpine
+
+    container_name: fraud-nginx
+
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+    depends_on:
+      - api
+
+    networks:
+      - mlops
+
+
+  # ============================================================
+  # PostgreSQL - MLflow Backend Store
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+
+    container_name: mlflow-postgres
+
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - mlops
+
+
+  # ============================================================
+  # MinIO - S3 Compatible Artifact Store
+  # ============================================================
+  minio:
+    image: minio/minio:latest
+
+    container_name: mlflow-minio
+
+    restart: unless-stopped
+
+    command:
+      - server
+      - /data
+      - --console-address
+      - ":9001"
+
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+    volumes:
+      - minio_data:/data
+
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+    networks:
+      - mlops
+
+
+  # ============================================================
+  # MLflow Tracking Server
+  # ============================================================
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+
+    container_name: mlflow
+
+    restart: unless-stopped
+
+    command:
+      - mlflow
+      - server
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "5000"
+      - --allowed-hosts
+      - "mlflow:5000,localhost:5000,127.0.0.1:5000"
+      - --backend-store-uri
+      - "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      - --default-artifact-root
+      - "s3://${MLFLOW_BUCKET_NAME}/"
+
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      MLFLOW_S3_ENDPOINT_URL: "http://minio:9000"
+
+    ports:
+      - "5000:5000"
+
+    depends_on:
+      postgres:
+        condition: service_started
+
+      minio:
+        condition: service_started
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    networks:
+      - mlops
+
+
+  # ============================================================
+  # Prometheus
+  # ============================================================
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #
+  #   container_name: prometheus
+  #
+  #   restart: unless-stopped
+  #
+  #   volumes:
+  #     - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #
+  #   ports:
+  #     - "9090:9090"
+  #
+  #   depends_on:
+  #     - api
+  #
+  #   networks:
+  #     - mlops
+
+
+  # ============================================================
+  # Grafana
+  # ============================================================
+  # grafana:
+  #   image: grafana/grafana:latest
+  #
+  #   container_name: grafana
+  #
+  #   restart: unless-stopped
+  #
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #
+  #   ports:
+  #     - "3000:3000"
+  #
+  #   depends_on:
+  #     - prometheus
+  #
+  #   networks:
+  #     - mlops
+
+
+# ==============================================================
+# Networks
+# ==============================================================
+networks:
+  mlops:
+    driver: bridge
+
+
+# ==============================================================
+# Persistent Volumes
+# ==============================================================
+volumes:
+  postgres_data:
+  minio_data:
+  # grafana_data:

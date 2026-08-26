@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+
+metadata:
+
+  generateName: mlops-training-
+
+  namespace: argo
+
+spec:
+
+  workflowTemplateRef:
+
+    name: mlops-training-pipeline
+
+  arguments:
+
+    parameters:
+
+      - name: image
+
+        value: "mdmokchhedulislam/mlops-end-to-end:latest"
+
+      - name: experiment-name
+
+        value: "fraud-detection"
+
+      - name: model-name
+
+        value: "fraud-detection-model"

@@ -9,3 +9,13 @@ uvicorn
 prometheus-client
 pytest
 xgboost
+pyfunc
+fastapi
+uvicorn[standard]
+prometheus-fastapi-instrumentator
+mlflow
+pandas
+numpy
+scikit-learn
+boto3
+botocore
