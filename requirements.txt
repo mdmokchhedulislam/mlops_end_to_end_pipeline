@@ -3,19 +3,31 @@ numpy
 scikit-learn
 joblib
 pyyaml
-mlflow
-fastapi
-uvicorn
-prometheus-client
-pytest
+
+# Machine Learning
+
 xgboost
-pyfunc
+
+# MLflow
+
+mlflow
+
+# API
+
 fastapi
 uvicorn[standard]
+prometheus-client
 prometheus-fastapi-instrumentator
-mlflow
-pandas
-numpy
-scikit-learn
+
+# Testing
+
+pytest
+
+# AWS / S3
+
 boto3
 botocore
+
+# DVC with S3 support
+
+dvc[s3]
