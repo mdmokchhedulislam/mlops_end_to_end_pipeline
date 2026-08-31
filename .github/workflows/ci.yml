@@ -34,7 +34,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
 
@@ -116,43 +116,43 @@ jobs:
   # NO TRAINING HERE
   # ============================================================
 
-  # data-pipeline:
-  #   name: DVC Data Pipeline
-  #   # needs: test
+  data-pipeline:
+    name: DVC Data Pipeline
+    # needs: test
 
 
-  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-  #   runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-  #   steps:
+    steps:
 
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - name: Setup Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.11"
-  #         cache: pip
-  #         cache-dependency-path: requirements.txt
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
-  #     - name: Install dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
   #     # --------------------------------------------------------
   #     # Pull raw dataset from DVC remote
   #     # --------------------------------------------------------
 
-  #     - name: DVC Pull
-  #       env:
-  #         AWS_ACCESS_KEY_ID: ${{ secrets.DVC_AWS_ACCESS_KEY_ID }}
-  #         AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_AWS_SECRET_ACCESS_KEY }}
-  #         AWS_ENDPOINT_URL: ${{ secrets.DVC_AWS_ENDPOINT_URL }}
-  #       run: |
-  #         dvc pull
+      - name: DVC Pull
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DVC_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.DVC_AWS_ENDPOINT_URL }}
+        run: |
+          dvc pull
 
       # --------------------------------------------------------
       # Run:
@@ -162,13 +162,13 @@ jobs:
       # validation.py
       # --------------------------------------------------------
 
-      # - name: Run DVC pipeline
-      #   env:
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.DVC_AWS_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_AWS_SECRET_ACCESS_KEY }}
-      #     AWS_ENDPOINT_URL: ${{ secrets.DVC_AWS_ENDPOINT_URL }}
-      #   run: |
-      #     dvc repro
+      - name: Run DVC pipeline
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.DVC_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_AWS_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.DVC_AWS_ENDPOINT_URL }}
+        run: |
+          dvc repro
 
       # --------------------------------------------------------
       # Upload ONLY processed data for next CI job
@@ -177,15 +177,15 @@ jobs:
       # Model stays in MLflow.
       # --------------------------------------------------------
 
-      # - name: Upload processed dataset
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: processed-dataset
-      #     if-no-files-found: error
-      #     retention-days: 1
-      #     path: |
-      #       data/processed/raw_ingested.csv
-      #       data/processed/processed_transactions.parquet
+      - name: Upload processed dataset
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-dataset
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            data/processed/raw_ingested.csv
+            data/processed/processed_transactions.parquet
 
 
   # ============================================================
@@ -204,11 +204,11 @@ jobs:
 
   train:
     name: Train Model
-    needs: data-pipeline
+    # needs: data-pipeline
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
 
@@ -291,7 +291,7 @@ jobs:
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
 
@@ -407,7 +407,7 @@ jobs:
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
 
@@ -540,7 +540,7 @@ jobs:
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     permissions:
       contents: read
