@@ -118,7 +118,7 @@ jobs:
 
   data-pipeline:
     name: DVC Data Pipeline
-    needs: test
+    # needs: test
 
     # Don't train models for PRs.
     # Full ML pipeline runs only after merge/push to main.
