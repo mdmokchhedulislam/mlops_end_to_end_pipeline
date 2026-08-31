@@ -5,20 +5,12 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN useradd --create-home --shell /bin/bash appuser
-
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api ./api
-COPY src ./src
 
-RUN chown -R appuser:appuser /app
+EXPOSE 8080
 
-USER appuser
-
-EXPOSE 8000
-
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8080"]
