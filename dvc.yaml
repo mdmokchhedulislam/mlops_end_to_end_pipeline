@@ -1,23 +1,32 @@
+
 stages:
 
   ingest:
     cmd: python src/data/ingestion.py
+
     deps:
       - src/data/ingestion.py
-      - data/raw/transactions.csv
+      - data/source/transactions.csv
+
     outs:
-      - data/processed/raw_ingested.csv
+      - data/raw/transactions.csv
 
   preprocess:
     cmd: python src/data/preprocessing.py
+
     deps:
       - src/data/preprocessing.py
-      - data/processed/raw_ingested.csv
+      - data/raw/transactions.csv
+
     outs:
-      - data/processed/processed_transactions.parquet
+      - data/processed/X_train.csv
+      - data/processed/X_test.csv
+      - data/processed/y_train.csv
+      - data/processed/y_test.csv
+      - data/processed/scaler.pkl
 
   validate:
     cmd: python src/data/validation.py
+
     deps:
       - src/data/validation.py
-      - data/processed/processed_transactions.parquet

@@ -1,0 +1,57 @@
+schema: '2.0'
+stages:
+  ingest:
+    cmd: python src/data/ingestion.py
+    deps:
+    - path: data/source/transactions.csv
+      hash: md5
+      md5: a1e938daf9b829dcba4fefdb2ec06923
+      size: 139870
+    - path: src/data/ingestion.py
+      hash: md5
+      md5: d9cfd18e6be6203f8736d7ebc378af3f
+      size: 3686
+    outs:
+    - path: data/raw/transactions.csv
+      hash: md5
+      md5: a1e938daf9b829dcba4fefdb2ec06923
+      size: 139870
+  preprocess:
+    cmd: python src/data/preprocessing.py
+    deps:
+    - path: data/raw/transactions.csv
+      hash: md5
+      md5: a1e938daf9b829dcba4fefdb2ec06923
+      size: 139870
+    - path: src/data/preprocessing.py
+      hash: md5
+      md5: 40247f027d03a7c77ef1be977d227737
+      size: 7236
+    outs:
+    - path: data/processed/X_test.csv
+      hash: md5
+      md5: 42e1fcb0efa6c2b15684800ad7ca1fb5
+      size: 59716
+    - path: data/processed/X_train.csv
+      hash: md5
+      md5: 66d59bbf59bf93951a7051c4390584ee
+      size: 238641
+    - path: data/processed/scaler.pkl
+      hash: md5
+      md5: 4e93d6d00e84361aa345ea8ca39b124b
+      size: 618
+    - path: data/processed/y_test.csv
+      hash: md5
+      md5: cc93f40025c69d3b4911ce9ca1e076ce
+      size: 3007
+    - path: data/processed/y_train.csv
+      hash: md5
+      md5: 0023cea968b62bf1c24f35ef09718b41
+      size: 12007
+  validate:
+    cmd: python src/data/validation.py
+    deps:
+    - path: src/data/validation.py
+      hash: md5
+      md5: 621b165b8507f75884b9f2dce83a3782
+      size: 10858
