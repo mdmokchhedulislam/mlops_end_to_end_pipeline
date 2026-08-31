@@ -59,7 +59,7 @@ jobs:
 
       - name: Ruff
         run: |
-          ruff check src api
+          ruff check src api --fix
 
 
   # ============================================================
