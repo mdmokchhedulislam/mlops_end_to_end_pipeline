@@ -4,14 +4,13 @@ import mlflow
 from mlflow import MlflowClient
 
 from src.config import (
-    MLFLOW_TRACKING_URI,
-    MLFLOW_EXPERIMENT,
     MIN_ACCURACY,
+    MIN_F1_SCORE,
     MIN_PRECISION,
     MIN_RECALL,
-    MIN_F1_SCORE,
+    MLFLOW_EXPERIMENT,
+    MLFLOW_TRACKING_URI,
 )
-
 
 # ============================================================
 # Constants

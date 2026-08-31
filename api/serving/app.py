@@ -1,9 +1,7 @@
 import mlflow
 import mlflow.pyfunc
-
 from fastapi import FastAPI
 from pydantic import BaseModel
-
 
 # ==========================================
 # Configuration

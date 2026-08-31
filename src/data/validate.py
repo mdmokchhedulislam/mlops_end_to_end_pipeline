@@ -1,8 +1,8 @@
-from pathlib import Path
+
 import sys
+from pathlib import Path
 
 import pandas as pd
-
 
 # ============================================================
 # Configuration
@@ -26,14 +26,15 @@ MIN_ROWS = 1000
 # 1. Check file
 # ============================================================
 
+
 def check_file_exists() -> None:
+    """Check whether the dataset file exists."""
 
     print("=" * 60)
     print("1. CHECKING DATASET FILE")
     print("=" * 60)
 
     if not DATA_PATH.exists():
-
         raise FileNotFoundError(
             f"Dataset not found: {DATA_PATH}"
         )
@@ -45,7 +46,9 @@ def check_file_exists() -> None:
 # 2. Load dataset
 # ============================================================
 
+
 def load_dataset() -> pd.DataFrame:
+    """Load the dataset from the configured path."""
 
     print("\n" + "=" * 60)
     print("2. LOADING DATASET")
@@ -63,17 +66,16 @@ def load_dataset() -> pd.DataFrame:
 # 3. Check empty dataset
 # ============================================================
 
+
 def check_empty(df: pd.DataFrame) -> None:
+    """Check whether the dataset is empty."""
 
     print("\n" + "=" * 60)
     print("3. CHECKING EMPTY DATASET")
     print("=" * 60)
 
     if df.empty:
-
-        raise ValueError(
-            "Dataset is empty"
-        )
+        raise ValueError("Dataset is empty")
 
     print("Dataset is not empty")
 
@@ -82,7 +84,9 @@ def check_empty(df: pd.DataFrame) -> None:
 # 4. Check schema
 # ============================================================
 
+
 def check_schema(df: pd.DataFrame) -> None:
+    """Check whether all required columns exist."""
 
     print("\n" + "=" * 60)
     print("4. CHECKING SCHEMA")
@@ -95,7 +99,6 @@ def check_schema(df: pd.DataFrame) -> None:
     ]
 
     if missing_columns:
-
         raise ValueError(
             f"Missing columns: {missing_columns}"
         )
@@ -103,7 +106,6 @@ def check_schema(df: pd.DataFrame) -> None:
     print("Required columns found:")
 
     for column in REQUIRED_COLUMNS:
-
         print(f"  ✓ {column}")
 
 
@@ -111,7 +113,9 @@ def check_schema(df: pd.DataFrame) -> None:
 # 5. Check extra columns
 # ============================================================
 
+
 def check_extra_columns(df: pd.DataFrame) -> None:
+    """Check for columns outside the expected schema."""
 
     print("\n" + "=" * 60)
     print("5. CHECKING EXTRA COLUMNS")
@@ -124,13 +128,10 @@ def check_extra_columns(df: pd.DataFrame) -> None:
     ]
 
     if extra_columns:
-
         print(
             f"Warning: Extra columns found: {extra_columns}"
         )
-
     else:
-
         print("No extra columns found")
 
 
@@ -138,7 +139,9 @@ def check_extra_columns(df: pd.DataFrame) -> None:
 # 6. Check missing values
 # ============================================================
 
+
 def check_missing_values(df: pd.DataFrame) -> None:
+    """Check required columns for missing values."""
 
     print("\n" + "=" * 60)
     print("6. CHECKING MISSING VALUES")
@@ -149,12 +152,8 @@ def check_missing_values(df: pd.DataFrame) -> None:
     total_missing = missing.sum()
 
     if total_missing > 0:
-
         print("Missing values:")
-
-        print(
-            missing[missing > 0]
-        )
+        print(missing[missing > 0])
 
         raise ValueError(
             f"Dataset contains {total_missing} missing values"
@@ -167,7 +166,9 @@ def check_missing_values(df: pd.DataFrame) -> None:
 # 7. Check duplicate rows
 # ============================================================
 
+
 def check_duplicates(df: pd.DataFrame) -> None:
+    """Check whether the dataset contains duplicate rows."""
 
     print("\n" + "=" * 60)
     print("7. CHECKING DUPLICATE ROWS")
@@ -175,12 +176,9 @@ def check_duplicates(df: pd.DataFrame) -> None:
 
     duplicates = df.duplicated().sum()
 
-    print(
-        f"Duplicate rows: {duplicates}"
-    )
+    print(f"Duplicate rows: {duplicates}")
 
     if duplicates > 0:
-
         raise ValueError(
             f"Dataset contains {duplicates} duplicate rows"
         )
@@ -192,7 +190,9 @@ def check_duplicates(df: pd.DataFrame) -> None:
 # 8. Check data types
 # ============================================================
 
+
 def check_data_types(df: pd.DataFrame) -> None:
+    """Validate data types for numeric columns."""
 
     print("\n" + "=" * 60)
     print("8. CHECKING DATA TYPES")
@@ -202,15 +202,11 @@ def check_data_types(df: pd.DataFrame) -> None:
         "amount",
         "account_age",
         "transaction_count",
-        "fraud",
+        TARGET_COLUMN,
     ]
 
     for column in numeric_columns:
-
-        if not pd.api.types.is_numeric_dtype(
-            df[column]
-        ):
-
+        if not pd.api.types.is_numeric_dtype(df[column]):
             raise TypeError(
                 f"Column '{column}' must be numeric"
             )
@@ -224,14 +220,15 @@ def check_data_types(df: pd.DataFrame) -> None:
 # 9. Check amount
 # ============================================================
 
+
 def check_amount(df: pd.DataFrame) -> None:
+    """Validate transaction amount values."""
 
     print("\n" + "=" * 60)
     print("9. CHECKING AMOUNT")
     print("=" * 60)
 
     if (df["amount"] < 0).any():
-
         raise ValueError(
             "Amount contains negative values"
         )
@@ -251,14 +248,15 @@ def check_amount(df: pd.DataFrame) -> None:
 # 10. Check account age
 # ============================================================
 
+
 def check_account_age(df: pd.DataFrame) -> None:
+    """Validate account age values."""
 
     print("\n" + "=" * 60)
     print("10. CHECKING ACCOUNT AGE")
     print("=" * 60)
 
     if (df["account_age"] < 0).any():
-
         raise ValueError(
             "account_age contains negative values"
         )
@@ -278,14 +276,17 @@ def check_account_age(df: pd.DataFrame) -> None:
 # 11. Check transaction count
 # ============================================================
 
-def check_transaction_count(df: pd.DataFrame) -> None:
+
+def check_transaction_count(
+    df: pd.DataFrame,
+) -> None:
+    """Validate transaction count values."""
 
     print("\n" + "=" * 60)
     print("11. CHECKING TRANSACTION COUNT")
     print("=" * 60)
 
     if (df["transaction_count"] < 0).any():
-
         raise ValueError(
             "transaction_count contains negative values"
         )
@@ -307,14 +308,16 @@ def check_transaction_count(df: pd.DataFrame) -> None:
 # 12. Check fraud target
 # ============================================================
 
+
 def check_target(df: pd.DataFrame) -> None:
+    """Validate the fraud target values."""
 
     print("\n" + "=" * 60)
     print("12. CHECKING FRAUD TARGET")
     print("=" * 60)
 
     unique_values = set(
-        df["fraud"].unique()
+        df[TARGET_COLUMN].unique()
     )
 
     print(
@@ -328,19 +331,14 @@ def check_target(df: pd.DataFrame) -> None:
     )
 
     if invalid_values:
-
         raise ValueError(
-            f"Invalid fraud values: "
-            f"{invalid_values}"
+            f"Invalid fraud values: {invalid_values}"
         )
 
-    fraud_counts = df["fraud"].value_counts()
+    fraud_counts = df[TARGET_COLUMN].value_counts()
 
     print("\nClass distribution:")
-
-    print(
-        fraud_counts
-    )
+    print(fraud_counts)
 
     print("✓ Fraud target is valid")
 
@@ -349,18 +347,19 @@ def check_target(df: pd.DataFrame) -> None:
 # 13. Check infinite values
 # ============================================================
 
+
 def check_infinite_values(
     df: pd.DataFrame,
 ) -> None:
+    """Check required numeric columns for infinite values."""
 
     print("\n" + "=" * 60)
     print("13. CHECKING INFINITE VALUES")
     print("=" * 60)
 
-    numeric_df = df[
-        REQUIRED_COLUMNS
-    ].select_dtypes(
-        include="number"
+    numeric_df = (
+        df[REQUIRED_COLUMNS]
+        .select_dtypes(include="number")
     )
 
     infinite_values = (
@@ -371,7 +370,6 @@ def check_infinite_values(
     )
 
     if infinite_values > 0:
-
         raise ValueError(
             "Dataset contains infinite values"
         )
@@ -383,16 +381,17 @@ def check_infinite_values(
 # 14. Check minimum dataset size
 # ============================================================
 
+
 def check_minimum_rows(
     df: pd.DataFrame,
 ) -> None:
+    """Check whether the dataset meets the minimum size."""
 
     print("\n" + "=" * 60)
     print("14. CHECKING DATASET SIZE")
     print("=" * 60)
 
     if len(df) < MIN_ROWS:
-
         raise ValueError(
             f"Dataset has {len(df)} rows. "
             f"Minimum required: {MIN_ROWS}"
@@ -407,7 +406,9 @@ def check_minimum_rows(
 # Main Validation
 # ============================================================
 
+
 def validate_dataset() -> None:
+    """Run the complete dataset validation pipeline."""
 
     print("\n")
     print("=" * 60)
@@ -453,13 +454,10 @@ def validate_dataset() -> None:
 # ============================================================
 
 if __name__ == "__main__":
-
     try:
-
         validate_dataset()
 
-    except Exception as error:
-
+    except Exception as error:  # noqa: BLE001
         print("\n")
         print("=" * 60)
         print("        DATA VALIDATION FAILED ✗")

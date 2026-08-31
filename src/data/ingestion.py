@@ -1,9 +1,9 @@
-from pathlib import Path
+
 import shutil
 import sys
+from pathlib import Path
 
 import pandas as pd
-
 
 # ============================================================
 # Configuration
@@ -20,6 +20,7 @@ RAW_DATA_PATH = RAW_DATA_DIR / "transactions.csv"
 # Check Source
 # ============================================================
 
+
 def check_source_file() -> None:
     """Check whether source dataset exists."""
 
@@ -28,7 +29,6 @@ def check_source_file() -> None:
     print("=" * 60)
 
     if not SOURCE_PATH.exists():
-
         raise FileNotFoundError(
             f"Source dataset not found: {SOURCE_PATH}"
         )
@@ -41,6 +41,7 @@ def check_source_file() -> None:
 # ============================================================
 # Create Raw Data Directory
 # ============================================================
+
 
 def create_raw_directory() -> None:
     """Create raw data directory if it does not exist."""
@@ -63,6 +64,7 @@ def create_raw_directory() -> None:
 # Ingest Data
 # ============================================================
 
+
 def ingest_data() -> None:
     """Copy source dataset into raw data directory."""
 
@@ -84,6 +86,7 @@ def ingest_data() -> None:
 # Verify Ingested Data
 # ============================================================
 
+
 def verify_data() -> None:
     """Verify ingested dataset."""
 
@@ -92,7 +95,6 @@ def verify_data() -> None:
     print("=" * 60)
 
     if not RAW_DATA_PATH.exists():
-
         raise FileNotFoundError(
             "Ingested dataset was not created"
         )
@@ -114,7 +116,6 @@ def verify_data() -> None:
     )
 
     if df.empty:
-
         raise ValueError(
             "Ingested dataset is empty"
         )
@@ -128,7 +129,9 @@ def verify_data() -> None:
 # Main Pipeline
 # ============================================================
 
+
 def ingest() -> None:
+    """Run the complete data ingestion pipeline."""
 
     print("\n")
     print("=" * 60)
@@ -153,14 +156,12 @@ def ingest() -> None:
 # Entry Point
 # ============================================================
 
+
 if __name__ == "__main__":
-
     try:
-
         ingest()
 
-    except Exception as error:
-
+    except Exception as error:  # noqa: BLE001
         print("\n")
         print("=" * 60)
         print("          DATA INGESTION FAILED ✗")
@@ -169,3 +170,4 @@ if __name__ == "__main__":
         print(f"\nError: {error}")
 
         sys.exit(1)
+

@@ -1,24 +1,24 @@
+
 from typing import Any
 
 import mlflow
 from mlflow import MlflowClient
+from mlflow.exceptions import MlflowException
 
 from src.config import (
-    MLFLOW_TRACKING_URI,
     MLFLOW_EXPERIMENT,
-    MLFLOW_MODEL_NAME,
     MLFLOW_MODEL_ALIAS,
+    MLFLOW_MODEL_NAME,
+    MLFLOW_TRACKING_URI,
 )
-
 
 # ============================================================
 # MLflow Client
 # ============================================================
 
+
 def get_mlflow_client() -> MlflowClient:
-    """
-    Create and return MLflow client.
-    """
+    """Create and return MLflow client."""
 
     return MlflowClient(
         tracking_uri=MLFLOW_TRACKING_URI
@@ -29,12 +29,12 @@ def get_mlflow_client() -> MlflowClient:
 # Find Best Model
 # ============================================================
 
+
 def find_best_model() -> dict[str, Any]:
     """
     Find the best evaluated model from MLflow.
 
-    The best model is selected based on
-    eval_f1_score.
+    The best model is selected based on eval_f1_score.
     """
 
     print("\n" + "=" * 70)
@@ -47,14 +47,11 @@ def find_best_model() -> dict[str, Any]:
     # Get Experiment
     # --------------------------------------------------------
 
-    experiment = (
-        client.get_experiment_by_name(
-            MLFLOW_EXPERIMENT
-        )
+    experiment = client.get_experiment_by_name(
+        MLFLOW_EXPERIMENT
     )
 
     if experiment is None:
-
         raise RuntimeError(
             f"MLflow experiment not found: "
             f"{MLFLOW_EXPERIMENT}"
@@ -83,7 +80,6 @@ def find_best_model() -> dict[str, Any]:
     )
 
     if not runs:
-
         raise RuntimeError(
             "No successfully evaluated model "
             "found in MLflow."
@@ -106,9 +102,7 @@ def find_best_model() -> dict[str, Any]:
     ]
 
     for metric_name in required_metrics:
-
         if metric_name not in metrics:
-
             raise RuntimeError(
                 f"Required metric '{metric_name}' "
                 f"not found in run "
@@ -131,18 +125,10 @@ def find_best_model() -> dict[str, Any]:
     result = {
         "run_id": best_run.info.run_id,
         "model_name": model_name,
-        "accuracy": metrics[
-            "eval_accuracy"
-        ],
-        "precision": metrics[
-            "eval_precision"
-        ],
-        "recall": metrics[
-            "eval_recall"
-        ],
-        "f1_score": metrics[
-            "eval_f1_score"
-        ],
+        "accuracy": metrics["eval_accuracy"],
+        "precision": metrics["eval_precision"],
+        "recall": metrics["eval_recall"],
+        "f1_score": metrics["eval_f1_score"],
         "artifact_uri": (
             f"runs:/{best_run.info.run_id}/model"
         ),
@@ -153,6 +139,7 @@ def find_best_model() -> dict[str, Any]:
     # --------------------------------------------------------
 
     print("\nBest Model:")
+
     print(
         f"Model     : {result['model_name']}"
     )
@@ -193,15 +180,13 @@ def find_best_model() -> dict[str, Any]:
 # Create Registered Model
 # ============================================================
 
+
 def create_registered_model(
     client: MlflowClient,
 ) -> None:
-    """
-    Create registered model if it does not exist.
-    """
+    """Create registered model if it does not exist."""
 
     try:
-
         client.get_registered_model(
             MLFLOW_MODEL_NAME
         )
@@ -211,8 +196,7 @@ def create_registered_model(
             f"{MLFLOW_MODEL_NAME}"
         )
 
-    except Exception:
-
+    except MlflowException:
         print(
             f"\nCreating registered model: "
             f"{MLFLOW_MODEL_NAME}"
@@ -236,6 +220,7 @@ def create_registered_model(
 # Register Best Model
 # ============================================================
 
+
 def register_best_model(
     best_result: dict[str, Any],
 ) -> str:
@@ -254,9 +239,7 @@ def register_best_model(
     # Create Registered Model
     # --------------------------------------------------------
 
-    create_registered_model(
-        client
-    )
+    create_registered_model(client)
 
     # --------------------------------------------------------
     # Create Model Version
@@ -291,9 +274,7 @@ def register_best_model(
     # --------------------------------------------------------
 
     tags = {
-        "algorithm": (
-            best_result["model_name"]
-        ),
+        "algorithm": best_result["model_name"],
         "accuracy": (
             f"{best_result['accuracy']:.6f}"
         ),
@@ -313,7 +294,6 @@ def register_best_model(
     }
 
     for key, value in tags.items():
-
         client.set_model_version_tag(
             name=MLFLOW_MODEL_NAME,
             version=version,
@@ -358,9 +338,7 @@ def register_best_model(
         "\nProduction Model URI:"
     )
 
-    print(
-        production_uri
-    )
+    print(production_uri)
 
     return version
 
@@ -369,7 +347,9 @@ def register_best_model(
 # Main
 # ============================================================
 
+
 def main() -> None:
+    """Run the model registration pipeline."""
 
     print("\n")
     print("=" * 70)
@@ -450,21 +430,17 @@ def main() -> None:
 # Entry Point
 # ============================================================
 
+
 if __name__ == "__main__":
-
     try:
-
         main()
 
     except Exception as error:
-
         print("\n")
         print("=" * 70)
         print("        MODEL REGISTRATION FAILED ✗")
         print("=" * 70)
 
-        print(
-            f"\nError: {error}"
-        )
+        print(f"\nError: {error}")
 
         raise

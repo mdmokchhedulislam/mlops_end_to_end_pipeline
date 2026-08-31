@@ -4,11 +4,10 @@ import mlflow
 import pandas as pd
 
 from src.config import (
-    PROCESSED_DATA_DIR,
-    MLFLOW_TRACKING_URI,
     MLFLOW_EXPERIMENT,
+    MLFLOW_TRACKING_URI,
+    PROCESSED_DATA_DIR,
 )
-
 
 # ============================================================
 # Test Dataset Paths
@@ -67,9 +66,9 @@ def calculate_metrics(
 
     from sklearn.metrics import (
         accuracy_score,
+        f1_score,
         precision_score,
         recall_score,
-        f1_score,
     )
 
     accuracy = accuracy_score(

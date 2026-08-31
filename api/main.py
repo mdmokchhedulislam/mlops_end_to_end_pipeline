@@ -1,7 +1,7 @@
-import mlflow
-import pandas as pd
 import os
 
+import mlflow
+import pandas as pd
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -9,7 +9,6 @@ from api.schemas import (
     PredictionRequest,
     PredictionResponse,
 )
-
 
 # ============================================================
 # MLflow Configuration
