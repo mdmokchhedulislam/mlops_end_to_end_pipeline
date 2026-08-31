@@ -120,8 +120,7 @@ jobs:
     name: DVC Data Pipeline
     # needs: test
 
-    # Don't train models for PRs.
-    # Full ML pipeline runs only after merge/push to main.
+
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
