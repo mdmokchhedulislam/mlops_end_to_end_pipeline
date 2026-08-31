@@ -118,8 +118,6 @@ jobs:
 
   data-pipeline:
     name: DVC Data Pipeline
-    # needs: test
-
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
@@ -127,9 +125,15 @@ jobs:
 
     steps:
 
+      # --------------------------------------------------------
+      # Checkout Repository
+      # --------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # --------------------------------------------------------
+      # Setup Python
+      # --------------------------------------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -137,46 +141,44 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.txt
 
+      # --------------------------------------------------------
+      # Install Dependencies
+      # --------------------------------------------------------
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-  #     # --------------------------------------------------------
-  #     # Pull raw dataset from DVC remote
-  #     # --------------------------------------------------------
-
+      # --------------------------------------------------------
+      # DVC Pull
+      # --------------------------------------------------------
       - name: DVC Pull
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.DVC_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_AWS_SECRET_ACCESS_KEY }}
-          AWS_ENDPOINT_URL: ${{ secrets.DVC_AWS_ENDPOINT_URL }}
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minio123
+          AWS_ENDPOINT_URL: http://minio:9000
+          AWS_S3_ENDPOINT: http://minio:9000
         run: |
           dvc pull
 
       # --------------------------------------------------------
-      # Run:
-      #
-      # ingestion.py
-      # preprocessing.py
-      # validation.py
+      # Run DVC Pipeline
+      # ingestion
+      # preprocessing
+      # validation
       # --------------------------------------------------------
-
       - name: Run DVC pipeline
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.DVC_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.DVC_AWS_SECRET_ACCESS_KEY }}
-          AWS_ENDPOINT_URL: ${{ secrets.DVC_AWS_ENDPOINT_URL }}
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minio123
+          AWS_ENDPOINT_URL: http://minio:9000
+          AWS_S3_ENDPOINT: http://minio:9000
         run: |
           dvc repro
 
       # --------------------------------------------------------
-      # Upload ONLY processed data for next CI job
-      #
-      # This is not model storage.
-      # Model stays in MLflow.
+      # Upload Processed Dataset
       # --------------------------------------------------------
-
       - name: Upload processed dataset
         uses: actions/upload-artifact@v4
         with:
@@ -202,394 +204,394 @@ jobs:
   # containing the MLflow Run ID.
   # ============================================================
 
-  train:
-    name: Train Model
-    # needs: data-pipeline
+  # train:
+  #   name: Train Model
+  #   # needs: data-pipeline
 
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    runs-on: self-hosted
+  #   runs-on: self-hosted
 
-    steps:
+  #   steps:
 
-      - name: Checkout
-        uses: actions/checkout@v4
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: requirements.txt
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #         cache: pip
+  #         cache-dependency-path: requirements.txt
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt
 
-      # --------------------------------------------------------
-      # Get processed dataset
-      # --------------------------------------------------------
+  #     # --------------------------------------------------------
+  #     # Get processed dataset
+  #     # --------------------------------------------------------
 
-      - name: Download processed dataset
-        uses: actions/download-artifact@v4
-        with:
-          name: processed-dataset
-          path: data/processed
-
-      # --------------------------------------------------------
-      # Train
-      # --------------------------------------------------------
+  #     - name: Download processed dataset
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: processed-dataset
+  #         path: data/processed
+
+  #     # --------------------------------------------------------
+  #     # Train
+  #     # --------------------------------------------------------
 
-      - name: Train model
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  #     - name: Train model
+  #       env:
+  #         MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
 
-          AWS_ACCESS_KEY_ID: ${{ secrets.MLFLOW_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.MLFLOW_AWS_SECRET_ACCESS_KEY }}
-
-          MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
+  #         AWS_ACCESS_KEY_ID: ${{ secrets.MLFLOW_AWS_ACCESS_KEY_ID }}
+  #         AWS_SECRET_ACCESS_KEY: ${{ secrets.MLFLOW_AWS_SECRET_ACCESS_KEY }}
+
+  #         MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
 
-        run: |
-          python -m src.training.train
+  #       run: |
+  #         python -m src.training.train
 
-      # --------------------------------------------------------
-      # Verify MLflow Run ID was created
-      # --------------------------------------------------------
+  #     # --------------------------------------------------------
+  #     # Verify MLflow Run ID was created
+  #     # --------------------------------------------------------
 
-      - name: Verify MLflow Run ID
-        run: |
-          test -f mlflow_run_id.txt
-          test -s mlflow_run_id.txt
+  #     - name: Verify MLflow Run ID
+  #       run: |
+  #         test -f mlflow_run_id.txt
+  #         test -s mlflow_run_id.txt
 
-          echo "MLflow Run ID:"
-          cat mlflow_run_id.txt
+  #         echo "MLflow Run ID:"
+  #         cat mlflow_run_id.txt
 
-      # --------------------------------------------------------
-      # Pass ONLY metadata to next job
-      # --------------------------------------------------------
+  #     # --------------------------------------------------------
+  #     # Pass ONLY metadata to next job
+  #     # --------------------------------------------------------
 
-      - name: Upload MLflow run metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: mlflow-run-metadata
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            mlflow_run_id.txt
+  #     - name: Upload MLflow run metadata
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: mlflow-run-metadata
+  #         if-no-files-found: error
+  #         retention-days: 1
+  #         path: |
+  #           mlflow_run_id.txt
 
 
-  # ============================================================
-  # 5. EVALUATION
-  #
-  # Evaluation loads model from MLflow using Run ID.
-  # ============================================================
-
-  evaluate:
-    name: Evaluate Model
-    needs: train
-
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    runs-on: self-hosted
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # --------------------------------------------------------
-      # Processed dataset
-      # --------------------------------------------------------
-
-      - name: Download processed dataset
-        uses: actions/download-artifact@v4
-        with:
-          name: processed-dataset
-          path: data/processed
-
-      # --------------------------------------------------------
-      # MLflow Run ID
-      # --------------------------------------------------------
-
-      - name: Download MLflow run metadata
-        uses: actions/download-artifact@v4
-        with:
-          name: mlflow-run-metadata
-          path: .
-
-      - name: Read MLflow Run ID
-        shell: bash
-        run: |
-          RUN_ID=$(cat mlflow_run_id.txt)
-
-          echo "MLFLOW_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
-
-          echo "Evaluating MLflow Run:"
-          echo "$RUN_ID"
-
-      # --------------------------------------------------------
-      # Evaluate
-      # --------------------------------------------------------
-
-      - name: Evaluate model
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-
-          AWS_ACCESS_KEY_ID: ${{ secrets.MLFLOW_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.MLFLOW_AWS_SECRET_ACCESS_KEY }}
-
-          MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
-
-          MLFLOW_RUN_ID: ${{ env.MLFLOW_RUN_ID }}
-
-        run: |
-          python -m src.evaluation.evaluate
-
-      # --------------------------------------------------------
-      # Evaluation must produce metrics
-      # --------------------------------------------------------
-
-      - name: Verify evaluation metrics
-        run: |
-          test -f metrics.json
-          test -s metrics.json
-
-      # --------------------------------------------------------
-      # Pass metrics to Quality Gate
-      # --------------------------------------------------------
-
-      - name: Upload evaluation metrics
-        uses: actions/upload-artifact@v4
-        with:
-          name: evaluation-metrics
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            metrics.json
-
-      # Pass Run ID again
-      - name: Upload MLflow run metadata
-        uses: actions/upload-artifact@v4
-        with:
-          name: evaluated-run
-          if-no-files-found: error
-          retention-days: 1
-          path: |
-            mlflow_run_id.txt
-
-
-  # ============================================================
-  # 6. QUALITY GATE
-  #
-  # If this fails:
-  #
-  # Registry ❌
-  # Docker    ❌
-  #
-  # ============================================================
-
-  quality-gate:
-    name: Model Quality Gate
-    needs: evaluate
-
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    runs-on: self-hosted
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+  # # ============================================================
+  # # 5. EVALUATION
+  # #
+  # # Evaluation loads model from MLflow using Run ID.
+  # # ============================================================
+
+  # evaluate:
+  #   name: Evaluate Model
+  #   needs: train
+
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+  #   runs-on: self-hosted
+
+  #   steps:
+
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #         cache: pip
+  #         cache-dependency-path: requirements.txt
+
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt
+
+  #     # --------------------------------------------------------
+  #     # Processed dataset
+  #     # --------------------------------------------------------
+
+  #     - name: Download processed dataset
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: processed-dataset
+  #         path: data/processed
+
+  #     # --------------------------------------------------------
+  #     # MLflow Run ID
+  #     # --------------------------------------------------------
+
+  #     - name: Download MLflow run metadata
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: mlflow-run-metadata
+  #         path: .
+
+  #     - name: Read MLflow Run ID
+  #       shell: bash
+  #       run: |
+  #         RUN_ID=$(cat mlflow_run_id.txt)
+
+  #         echo "MLFLOW_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+
+  #         echo "Evaluating MLflow Run:"
+  #         echo "$RUN_ID"
+
+  #     # --------------------------------------------------------
+  #     # Evaluate
+  #     # --------------------------------------------------------
+
+  #     - name: Evaluate model
+  #       env:
+  #         MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+
+  #         AWS_ACCESS_KEY_ID: ${{ secrets.MLFLOW_AWS_ACCESS_KEY_ID }}
+  #         AWS_SECRET_ACCESS_KEY: ${{ secrets.MLFLOW_AWS_SECRET_ACCESS_KEY }}
+
+  #         MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
+
+  #         MLFLOW_RUN_ID: ${{ env.MLFLOW_RUN_ID }}
+
+  #       run: |
+  #         python -m src.evaluation.evaluate
+
+  #     # --------------------------------------------------------
+  #     # Evaluation must produce metrics
+  #     # --------------------------------------------------------
+
+  #     - name: Verify evaluation metrics
+  #       run: |
+  #         test -f metrics.json
+  #         test -s metrics.json
+
+  #     # --------------------------------------------------------
+  #     # Pass metrics to Quality Gate
+  #     # --------------------------------------------------------
+
+  #     - name: Upload evaluation metrics
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: evaluation-metrics
+  #         if-no-files-found: error
+  #         retention-days: 1
+  #         path: |
+  #           metrics.json
+
+  #     # Pass Run ID again
+  #     - name: Upload MLflow run metadata
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: evaluated-run
+  #         if-no-files-found: error
+  #         retention-days: 1
+  #         path: |
+  #           mlflow_run_id.txt
+
+
+  # # ============================================================
+  # # 6. QUALITY GATE
+  # #
+  # # If this fails:
+  # #
+  # # Registry ❌
+  # # Docker    ❌
+  # #
+  # # ============================================================
+
+  # quality-gate:
+  #   name: Model Quality Gate
+  #   needs: evaluate
+
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+  #   runs-on: self-hosted
+
+  #   steps:
+
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #         cache: pip
+  #         cache-dependency-path: requirements.txt
+
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt
 
-      # --------------------------------------------------------
-      # Download metrics
-      # --------------------------------------------------------
+  #     # --------------------------------------------------------
+  #     # Download metrics
+  #     # --------------------------------------------------------
 
-      - name: Download evaluation metrics
-        uses: actions/download-artifact@v4
-        with:
-          name: evaluation-metrics
-          path: .
-
-      # --------------------------------------------------------
-      # Quality Gate
-      # --------------------------------------------------------
-
-      - name: Run quality gate
-        run: |
-          python -m src.evaluation.quality_gate
+  #     - name: Download evaluation metrics
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: evaluation-metrics
+  #         path: .
+
+  #     # --------------------------------------------------------
+  #     # Quality Gate
+  #     # --------------------------------------------------------
+
+  #     - name: Run quality gate
+  #       run: |
+  #         python -m src.evaluation.quality_gate
 
-      # --------------------------------------------------------
-      # Explicit verification
-      # --------------------------------------------------------
+  #     # --------------------------------------------------------
+  #     # Explicit verification
+  #     # --------------------------------------------------------
 
-      - name: Verify quality gate
-        run: |
-          echo "Model Quality Gate PASSED"
+  #     - name: Verify quality gate
+  #       run: |
+  #         echo "Model Quality Gate PASSED"
 
 
-  # ============================================================
-  # 7. MODEL REGISTRY
-  #
-  # Only runs when quality gate passes.
-  # ============================================================
+  # # ============================================================
+  # # 7. MODEL REGISTRY
+  # #
+  # # Only runs when quality gate passes.
+  # # ============================================================
 
-  register:
-    name: Register Model
-    needs: quality-gate
+  # register:
+  #   name: Register Model
+  #   needs: quality-gate
 
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    runs-on: ubuntu-latest
+  #   runs-on: ubuntu-latest
 
-    environment:
-      name: production
+  #   environment:
+  #     name: production
 
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # --------------------------------------------------------
-      # Get exact MLflow Run ID
-      # --------------------------------------------------------
-
-      - name: Download MLflow run metadata
-        uses: actions/download-artifact@v4
-        with:
-          name: evaluated-run
-          path: .
-
-      - name: Read MLflow Run ID
-        shell: bash
-        run: |
-          RUN_ID=$(cat mlflow_run_id.txt)
-
-          echo "MLFLOW_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
-
-          echo "Registering MLflow Run:"
-          echo "$RUN_ID"
-
-      # --------------------------------------------------------
-      # Register
-      # --------------------------------------------------------
-
-      - name: Register model
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-
-          AWS_ACCESS_KEY_ID: ${{ secrets.MLFLOW_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.MLFLOW_AWS_SECRET_ACCESS_KEY }}
-
-          MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
-
-          MLFLOW_RUN_ID: ${{ env.MLFLOW_RUN_ID }}
-
-        run: |
-          python -m src.registry.register
-
-
-  # ============================================================
-  # 8. DOCKER BUILD + PUSH
-  #
-  # Docker contains API/application.
-  #
-  # Model remains in MLflow.
-  # ============================================================
-
-  docker:
-    name: Build and Push API Image
-    needs: register
-
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    runs-on: self-hosted
-
-    permissions:
-      contents: read
-
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # --------------------------------------------------------
-      # Login
-      # --------------------------------------------------------
-
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.REGISTRY_URL }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      # --------------------------------------------------------
-      # Build
-      #
-      # IMPORTANT:
-      # This Dockerfile should contain FastAPI serving code.
-      # It should NOT train the model.
-      # --------------------------------------------------------
-
-      - name: Build Docker image
-        run: |
-          docker build \
-            -t "${{ secrets.REGISTRY_URL }}/fraud-api:${{ github.sha }}" \
-            -t "${{ secrets.REGISTRY_URL }}/fraud-api:latest" \
-            .
-
-      # --------------------------------------------------------
-      # Push immutable SHA tag
-      # --------------------------------------------------------
-
-      - name: Push SHA image
-        run: |
-          docker push \
-            "${{ secrets.REGISTRY_URL }}/fraud-api:${{ github.sha }}"
-
-      # --------------------------------------------------------
-      # Push latest
-      # --------------------------------------------------------
-
-      - name: Push latest image
-        run: |
-          docker push \
-            "${{ secrets.REGISTRY_URL }}/fraud-api:latest"
+  #   steps:
+
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #         cache: pip
+  #         cache-dependency-path: requirements.txt
+
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install -r requirements.txt
+
+  #     # --------------------------------------------------------
+  #     # Get exact MLflow Run ID
+  #     # --------------------------------------------------------
+
+  #     - name: Download MLflow run metadata
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: evaluated-run
+  #         path: .
+
+  #     - name: Read MLflow Run ID
+  #       shell: bash
+  #       run: |
+  #         RUN_ID=$(cat mlflow_run_id.txt)
+
+  #         echo "MLFLOW_RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
+
+  #         echo "Registering MLflow Run:"
+  #         echo "$RUN_ID"
+
+  #     # --------------------------------------------------------
+  #     # Register
+  #     # --------------------------------------------------------
+
+  #     - name: Register model
+  #       env:
+  #         MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+
+  #         AWS_ACCESS_KEY_ID: ${{ secrets.MLFLOW_AWS_ACCESS_KEY_ID }}
+  #         AWS_SECRET_ACCESS_KEY: ${{ secrets.MLFLOW_AWS_SECRET_ACCESS_KEY }}
+
+  #         MLFLOW_S3_ENDPOINT_URL: ${{ secrets.MLFLOW_S3_ENDPOINT_URL }}
+
+  #         MLFLOW_RUN_ID: ${{ env.MLFLOW_RUN_ID }}
+
+  #       run: |
+  #         python -m src.registry.register
+
+
+  # # ============================================================
+  # # 8. DOCKER BUILD + PUSH
+  # #
+  # # Docker contains API/application.
+  # #
+  # # Model remains in MLflow.
+  # # ============================================================
+
+  # docker:
+  #   name: Build and Push API Image
+  #   needs: register
+
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+  #   runs-on: self-hosted
+
+  #   permissions:
+  #     contents: read
+
+  #   steps:
+
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     # --------------------------------------------------------
+  #     # Login
+  #     # --------------------------------------------------------
+
+  #     - name: Login to Container Registry
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: ${{ secrets.REGISTRY_URL }}
+  #         username: ${{ secrets.REGISTRY_USERNAME }}
+  #         password: ${{ secrets.REGISTRY_PASSWORD }}
+
+  #     # --------------------------------------------------------
+  #     # Build
+  #     #
+  #     # IMPORTANT:
+  #     # This Dockerfile should contain FastAPI serving code.
+  #     # It should NOT train the model.
+  #     # --------------------------------------------------------
+
+  #     - name: Build Docker image
+  #       run: |
+  #         docker build \
+  #           -t "${{ secrets.REGISTRY_URL }}/fraud-api:${{ github.sha }}" \
+  #           -t "${{ secrets.REGISTRY_URL }}/fraud-api:latest" \
+  #           .
+
+  #     # --------------------------------------------------------
+  #     # Push immutable SHA tag
+  #     # --------------------------------------------------------
+
+  #     - name: Push SHA image
+  #       run: |
+  #         docker push \
+  #           "${{ secrets.REGISTRY_URL }}/fraud-api:${{ github.sha }}"
+
+  #     # --------------------------------------------------------
+  #     # Push latest
+  #     # --------------------------------------------------------
+
+  #     - name: Push latest image
+  #       run: |
+  #         docker push \
+  #           "${{ secrets.REGISTRY_URL }}/fraud-api:latest"
