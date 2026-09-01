@@ -1,178 +1,398 @@
-name: MLOps CI/CD Pipeline
+name: MLOps CI
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+  workflow_dispatch:
+
+# Prevent multiple CI runs for the same branch/PR
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
-  packages: write
-
-concurrency:
-  group: mlops-${{ github.ref }}
-  cancel-in-progress: false
 
 env:
-  AWS_ACCESS_KEY_ID: minioadmin
-  # AWS_ACCESS_KEY_ID: ${{ secrets.MINIO_ROOT_USER }}
-  AWS_SECRET_ACCESS_KEY: 13579mokMOK@
-  MLFLOW_S3_ENDPOINT_URL: http://192.168.1.112:9000
-  MLFLOW_TRACKING_URI: http://192.168.1.112:5000
-  MLFLOW_EXPERIMENT: fraud-detection
-  MLFLOW_MODEL_NAME: fraud-detection-model
-  MLFLOW_MODEL_ALIAS: champion
+  PYTHON_VERSION: "3.12"
+
+  # Change these according to your registry
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/fraud-detector
 
 jobs:
 
-  # ==================================================================
-  # 1) Lint + Unit Tests — fast, no infra dependency
-  # # ==================================================================
-  # lint-and-test:
-  #   name: Lint & Unit Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
+  # ============================================================
+  # 1. LINT
+  # ============================================================
 
-  #     - uses: actions/setup-python@v5
+  lint:
+    name: Ruff Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          # python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Ruff check
+        run: |
+          ruff check .
+
+      - name: Ruff format check
+        run: |
+          ruff format --check .
+
+
+  # ============================================================
+  # 2. UNIT TEST
+  # ============================================================
+
+  # test:
+  #   name: Unit Tests
+  #   runs-on: ubuntu-latest
+  #   needs: lint
+
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v5
   #       with:
-  #         python-version: "3.12"
+  #         python-version: ${{ env.PYTHON_VERSION }}
   #         cache: pip
-  #         cache-dependency-path: requirements.txt
 
   #     - name: Install dependencies
   #       run: |
   #         python -m pip install --upgrade pip
   #         pip install -r requirements.txt
+  #         pip install pytest pytest-cov
 
-  #     - name: Lint
-  #       run: ruff check src api tests
+  #     - name: Run tests
+  #       run: |
+  #         pytest \
+  #           -v \
+  #           --tb=short \
+  #           --cov=src \
+  #           --cov-report=term-missing \
+  #           --cov-report=xml
 
-  #     - name: Unit tests
-  #       run: pytest tests/ -v --cov=src --cov-report=term-missing
+  #     - name: Upload coverage report
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: coverage-report
+  #         path: coverage.xml
 
-  # ==================================================================
-  # 2) DVC pipeline — data + training + evaluation.
-  #    DVC's job ends at "did this reproduce", it makes no promotion
-  #    decision. Needs the self-hosted runner with MinIO/MLflow access.
-  # ==================================================================
-  dvc-pipeline:
-    name: DVC Pipeline (data -> train -> evaluate)
-    # needs: lint-and-test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements.txt
+  # ============================================================
+  # 3. DATA VALIDATION
+  # ============================================================
 
-      - name: Install dependencies
-        run: |
-          # python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: DVC pull
-        run: dvc pull
-
-      - name: Run DVC pipeline
-        run: dvc repro
-
-      - name: Push updated DVC artifacts
-        run: dvc push
-
-      - name: Upload run reference
-        uses: actions/upload-artifact@v4
-        with:
-          name: run-id
-          path: reports/run_id.txt
-          retention-days: 7
-
-  # ==================================================================
-  # 3) Quality gate + registration — pure MLflow, no DVC involvement.
-  #    A failing gate stops the pipeline here; nothing downstream runs.
-  # ==================================================================
-  quality-gate-and-register:
-    name: Quality Gate & Register Model
-    needs: dvc-pipeline
-    runs-on: self-hosted
-    outputs:
-      promoted: ${{ steps.register.outputs.promoted }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: requirements.txt
-
-      - name: Install dependencies
-        run: |
-          # python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      
-      - name: Run evaluate gate
-        run: python -m src.evaluation.evaluate
-
-      - name: Run quality gate
-        run: python -m src.model.quality_gate
-
-      - name: Register model
-        id: register
-        run: |
-          python -m src.model.register_model
-          echo "promoted=true" >> "$GITHUB_OUTPUT"
-
-  # ==================================================================
-  # 4) Build & push Docker image — only if a new model was promoted
-  # ==================================================================
-  build-and-push:
-    name: Build & Push Docker Image
-    needs: quality-gate-and-register
-    if: needs.quality-gate-and-register.outputs.promoted == 'true'
+  data-validation:
+    name: Data Validation
     runs-on: ubuntu-latest
+    needs: lint
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: docker/login-action@v3
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Install dependencies
+        run: |
+          # python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - uses: docker/build-push-action@v6
+      # --------------------------------------------------------
+      # IMPORTANT:
+      # CI should validate available/static test data.
+      #
+      # Do NOT run `dvc pull` here if your production data
+      # should only be accessed by the training pipeline.
+      # --------------------------------------------------------
+
+      - name: Validate project data
+        run: |
+          python -m src.data.validate
+
+
+  # ============================================================
+  # 4. SECRET SCAN
+  # ============================================================
+
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+  # ============================================================
+  # 5. DEPENDENCY SECURITY SCAN
+  # ============================================================
+
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pip-audit
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-audit
+
+      - name: Audit dependencies
+        run: |
+          pip-audit -r requirements.txt
+
+
+  # ============================================================
+  # 6. DOCKER BUILD
+  # ============================================================
+
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+
+    needs:
+      - test
+      - data-validation
+      - secret-scan
+      - dependency-scan
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          push: true
+
+          push: false
+
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+          labels: ${{ steps.meta.outputs.labels }}
+
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ==================================================================
-  # 5) Deploy — edit for your actual infra
-  # ==================================================================
-  # deploy:
-  #   name: Deploy to Production
-  #   needs: build-and-push
-  #   runs-on: self-hosted
-  #   environment: production
-  #   steps:
-  #     - uses: actions/checkout@v4
+      # --------------------------------------------------------
+      # Export image to Docker archive
+      # This allows Trivy to scan exactly the image built above.
+      # --------------------------------------------------------
 
-  #     - name: Deploy
-  #       run: |
-  #         echo "TODO: wire this to your infra, e.g.:"
-  #         echo "kubectl set image deployment/fraud-api api=ghcr.io/${{ github.repository }}:${{ github.sha }} -n mlops"
-  #         echo "or: ssh deploy@server 'cd /app && docker compose pull api && docker compose up -d api'"
+      - name: Build image archive
+        run: |
+          docker build \
+            --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            .
+
+          docker save \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -o fraud-detector.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: fraud-detector.tar
+
+
+  # ============================================================
+  # 7. CONTAINER IMAGE SECURITY SCAN
+  # ============================================================
+
+  image-scan:
+    name: Trivy Image Scan
+    runs-on: ubuntu-latest
+
+    needs: docker-build
+
+    steps:
+      - name: Download Docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: |
+          docker load \
+            --input fraud-detector.tar
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+
+  # ============================================================
+  # 8. PUSH IMAGE TO REGISTRY
+  # ============================================================
+
+  push-image:
+    name: Push Docker Image
+    runs-on: ubuntu-latest
+
+    needs:
+      - image-scan
+
+    # ----------------------------------------------------------
+    # IMPORTANT:
+    # Only push from trusted branches.
+    # Never push images from arbitrary PRs.
+    # ----------------------------------------------------------
+
+    if: |
+      github.event_name == 'push' &&
+      (
+        github.ref == 'refs/heads/main' ||
+        github.ref == 'refs/heads/develop'
+      )
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+
+          push: true
+
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+          labels: ${{ steps.meta.outputs.labels }}
+
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+  # ============================================================
+  # 9. CI SUMMARY
+  # ============================================================
+
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+
+    needs:
+      - lint
+      - test
+      - data-validation
+      - secret-scan
+      - dependency-scan
+      - docker-build
+      - image-scan
+      - push-image
+
+    if: always()
+
+    steps:
+      - name: Check CI status
+        run: |
+          if [[ "${{ needs.lint.result }}" != "success" ||
+                "${{ needs.test.result }}" != "success" ||
+                "${{ needs.data-validation.result }}" != "success" ||
+                "${{ needs.secret-scan.result }}" != "success" ||
+                "${{ needs.dependency-scan.result }}" != "success" ||
+                "${{ needs.docker-build.result }}" != "success" ||
+                "${{ needs.image-scan.result }}" != "success" ||
+                "${{ needs.push-image.result }}" != "success" ]]; then
+
+            echo "CI FAILED"
+            exit 1
+          fi
+
+          echo "CI PASSED"
+          echo "Docker image successfully built and pushed."
