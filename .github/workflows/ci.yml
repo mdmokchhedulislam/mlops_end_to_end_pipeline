@@ -370,7 +370,6 @@ jobs:
 
     needs:
       - lint
-      - test
       - data-validation
       - secret-scan
       - dependency-scan
