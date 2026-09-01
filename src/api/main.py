@@ -5,7 +5,7 @@ import pandas as pd
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from api.schemas import (
+from src.api.schemas import (
     PredictionRequest,
     PredictionResponse,
 )
