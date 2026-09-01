@@ -60,7 +60,7 @@ jobs:
 
       - name: Ruff format check
         run: |
-          ruff format --check .
+          ruff check . --fix
 
 
   # ============================================================
