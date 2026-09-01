@@ -36,7 +36,7 @@ Y_TEST_PATH = os.path.join(
 
 MLFLOW_TRACKING_URI = os.getenv(
     "MLFLOW_TRACKING_URI",
-    "http://localhost:5000",
+    "http://192.168.1.112:5000",
 )
 
 MLFLOW_EXPERIMENT = os.getenv(

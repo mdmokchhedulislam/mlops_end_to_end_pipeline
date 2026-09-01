@@ -1,4 +1,197 @@
 
+# # test_train.py
+
+# from pathlib import Path
+
+# import mlflow
+# import mlflow.sklearn
+# from sklearn.datasets import make_classification
+# from sklearn.ensemble import RandomForestClassifier
+# from sklearn.metrics import (
+#     accuracy_score,
+#     f1_score,
+#     precision_score,
+#     recall_score,
+# )
+# from sklearn.model_selection import train_test_split
+
+
+# # ============================================================
+# # Configuration
+# # ============================================================
+
+# MLFLOW_TRACKING_URI = "http://192.168.1.112:5000"
+# EXPERIMENT_NAME = "mlflow-metrics"
+
+
+# # ============================================================
+# # MLflow Setup
+# # ============================================================
+
+# mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+# mlflow.set_experiment(EXPERIMENT_NAME)
+
+
+# # ============================================================
+# # Dataset
+# # ============================================================
+
+# X, y = make_classification(
+#     n_samples=2000,
+#     n_features=5,
+#     n_informative=4,
+#     n_redundant=1,
+#     n_classes=2,
+#     random_state=42,
+# )
+
+# X_train, X_test, y_train, y_test = train_test_split(
+#     X,
+#     y,
+#     test_size=0.2,
+#     random_state=42,
+#     stratify=y,
+# )
+
+
+# # ============================================================
+# # Model
+# # ============================================================
+
+# model = RandomForestClassifier(
+#     n_estimators=100,
+#     max_depth=10,
+#     random_state=42,
+#     n_jobs=-1,
+# )
+
+
+# # ============================================================
+# # Training + MLflow Logging
+# # ============================================================
+
+# with mlflow.start_run(run_name="random_forest_metrics_test") as run:
+
+#     # --------------------------------------------------------
+#     # Parameters
+#     # --------------------------------------------------------
+
+#     mlflow.log_params(
+#         {
+#             "algorithm": "random_forest",
+#             "n_estimators": 100,
+#             "max_depth": 10,
+#             "random_state": 42,
+#             "training_samples": len(X_train),
+#             "test_samples": len(X_test),
+#             "feature_count": X.shape[1],
+#         }
+#     )
+
+#     # --------------------------------------------------------
+#     # Train
+#     # --------------------------------------------------------
+
+#     model.fit(X_train, y_train)
+
+#     # --------------------------------------------------------
+#     # Prediction
+#     # --------------------------------------------------------
+
+#     y_pred = model.predict(X_test)
+
+#     # --------------------------------------------------------
+#     # Metrics
+#     # --------------------------------------------------------
+
+#     accuracy = accuracy_score(y_test, y_pred)
+#     precision = precision_score(y_test, y_pred)
+#     recall = recall_score(y_test, y_pred)
+#     f1 = f1_score(y_test, y_pred)
+
+#     # --------------------------------------------------------
+#     # IMPORTANT:
+#     # These are RUN LEVEL metrics.
+#     # --------------------------------------------------------
+
+#     mlflow.log_metrics(
+#         {
+#             "accuracy": accuracy,
+#             "precision": precision,
+#             "recall": recall,
+#             "f1_score": f1,
+#         }
+#     )
+
+#     # --------------------------------------------------------
+#     # Tags
+#     # --------------------------------------------------------
+
+#     mlflow.set_tags(
+#         {
+#             "project": "mlflow-metrics-test",
+#             "pipeline_stage": "training",
+#             "model_name": "random_forest",
+#         }
+#     )
+
+#     # --------------------------------------------------------
+#     # Log Model
+#     # --------------------------------------------------------
+
+#     model_info = mlflow.sklearn.log_model(
+#         sk_model=model,
+#         name="random_forest_model",
+#     )
+
+#     # --------------------------------------------------------
+#     # Print useful information
+#     # --------------------------------------------------------
+
+#     print("=" * 70)
+#     print("MLflow Training Test Completed")
+#     print("=" * 70)
+
+#     print(f"Run ID       : {run.info.run_id}")
+#     print(f"Experiment ID: {run.info.experiment_id}")
+
+#     print()
+#     print("Metrics")
+#     print("-" * 70)
+#     print(f"Accuracy     : {accuracy:.4f}")
+#     print(f"Precision    : {precision:.4f}")
+#     print(f"Recall       : {recall:.4f}")
+#     print(f"F1 Score     : {f1:.4f}")
+
+#     print()
+#     print("Model")
+#     print("-" * 70)
+#     print(f"Model URI    : {model_info.model_uri}")
+
+#     if hasattr(model_info, "model_id"):
+#         print(f"Model ID     : {model_info.model_id}")
+
+#     print("=" * 70)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import logging
 import os
 from typing import Any
