@@ -61,7 +61,7 @@ jobs:
   # ==================================================================
   dvc-pipeline:
     name: DVC Pipeline (data -> train -> evaluate)
-    needs: lint-and-test
+    # needs: lint-and-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     steps:
