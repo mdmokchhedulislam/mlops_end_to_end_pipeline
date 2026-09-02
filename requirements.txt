@@ -1,33 +1,32 @@
+# Data Science & Core
 pandas
 numpy
 scikit-learn
 joblib
 pyyaml
 
-# Machine Learning
+# Security Fixes (Explicitly pinned to prevent vulnerabilities)
+cryptography>=50.0.0
+diskcache>=5.6.4
 
+# Machine Learning
 xgboost
 
 # MLflow
-
-mlflow
+mlflow>=3.16.0
 
 # API
-
 fastapi
 uvicorn[standard]
 prometheus-client
 prometheus-fastapi-instrumentator
 
 # Testing
-
 pytest
 
 # AWS / S3
-
 boto3
 botocore
 
 # DVC with S3 support
-
 dvc[s3]
