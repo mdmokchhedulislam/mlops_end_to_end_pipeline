@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mlops-workflow
+  namespace: mlops
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mlops-workflow-role
+  namespace: mlops
+rules:
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - secrets
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mlops-workflow-rolebinding
+  namespace: mlops
+subjects:
+  - kind: ServiceAccount
+    name: mlops-workflow
+    namespace: mlops
+
+roleRef:
+  kind: Role
+  name: mlops-workflow-role
+  apiGroup: rbac.authorization.k8s.io

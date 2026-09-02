@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: fraud-retraining
+  namespace: mlops
+
+spec:
+
+  schedule: "0 2 * * *"
+
+  timezone: "Asia/Dhaka"
+
+  concurrencyPolicy: "Forbid"
+
+  successfulJobsHistoryLimit: 3
+
+  failedJobsHistoryLimit: 3
+
+  workflowSpec:
+
+    workflowTemplateRef:
+      name: fraud-training-pipeline
+
+    arguments:
+
+      parameters:
+
+        - name: image
+          value: "YOUR_REGISTRY/fraud-detector:latest"
+
+        - name: model-name
+          value: "fraud-detector"
+
+        - name: experiment-name
+          value: "fraud-detection"

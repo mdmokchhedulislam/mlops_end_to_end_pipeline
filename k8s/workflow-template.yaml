@@ -1,0 +1,313 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: fraud-training-pipeline
+  namespace: mlops
+
+spec:
+
+  serviceAccountName: mlops-workflow
+
+  entrypoint: pipeline
+
+  arguments:
+    parameters:
+
+      - name: image
+        value: "YOUR_REGISTRY/fraud-detector:latest"
+
+      - name: model-name
+        value: "fraud-detector"
+
+      - name: experiment-name
+        value: "fraud-detection"
+
+  templates:
+
+    # ==========================================
+    # MAIN DAG
+    # ==========================================
+
+    - name: pipeline
+
+      dag:
+
+        tasks:
+
+          - name: ingest
+            template: ingest
+
+          - name: validate
+            dependencies:
+              - ingest
+            template: validate
+
+          - name: preprocess
+            dependencies:
+              - validate
+            template: preprocess
+
+          - name: train
+            dependencies:
+              - preprocess
+            template: train
+
+          - name: evaluate
+            dependencies:
+              - train
+            template: evaluate
+
+          - name: quality-gate
+            dependencies:
+              - evaluate
+            template: quality-gate
+
+          - name: register-model
+            dependencies:
+              - quality-gate
+            template: register-model
+
+
+    # ==========================================
+    # INGEST
+    # ==========================================
+
+    - name: ingest
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+          - python
+
+        args:
+          - src/ingest.py
+
+        envFrom:
+          - secretRef:
+              name: mlops-secrets
+
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+
+
+    # ==========================================
+    # VALIDATE
+    # ==========================================
+
+    - name: validate
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+          - python
+
+        args:
+          - src/validate.py
+
+        envFrom:
+          - secretRef:
+              name: mlops-secrets
+
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+
+
+    # ==========================================
+    # PREPROCESS
+    # ==========================================
+
+    - name: preprocess
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+          - python
+
+        args:
+          - src/preprocess.py
+
+        envFrom:
+          - secretRef:
+              name: mlops-secrets
+
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+
+
+    # ==========================================
+    # TRAIN
+    # ==========================================
+
+    - name: train
+
+      retryStrategy:
+
+        limit: "2"
+
+        retryPolicy: OnFailure
+
+        backoff:
+          duration: "10s"
+          factor: "2"
+          maxDuration: "1m"
+
+      timeout:
+        duration: "30m"
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+          - python
+
+        args:
+          - src/train.py
+
+        envFrom:
+          - secretRef:
+              name: mlops-secrets
+
+        env:
+
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: "{{workflow.parameters.experiment-name}}"
+
+          - name: MODEL_NAME
+            value: "{{workflow.parameters.model-name}}"
+
+        resources:
+
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+
+
+    # ==========================================
+    # EVALUATE
+    # ==========================================
+
+    - name: evaluate
+
+      timeout:
+        duration: "10m"
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+          - python
+
+        args:
+          - src/evaluate.py
+
+        envFrom:
+          - secretRef:
+              name: mlops-secrets
+
+        resources:
+
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+
+
+    # ==========================================
+    # QUALITY GATE
+    # ==========================================
+
+    - name: quality-gate
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+          - python
+
+        args:
+          - src/evaluate.py
+          - --quality-gate
+
+        envFrom:
+          - secretRef:
+              name: mlops-secrets
+
+        resources:
+
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+
+
+    # ==========================================
+    # MODEL REGISTRATION
+    # ==========================================
+
+    - name: register-model
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        command:
+          - python
+
+        args:
+          - src/register_model.py
+
+        envFrom:
+          - secretRef:
+              name: mlops-secrets
+
+        env:
+
+          - name: MODEL_NAME
+            value: "{{workflow.parameters.model-name}}"
+
+        resources:
+
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+
+          limits:
+            cpu: "1"
+            memory: "1Gi"
