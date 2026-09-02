@@ -1,11 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
+
 metadata:
   name: fraud-training-pipeline
   namespace: mlops
 
 spec:
-
   serviceAccountName: mlops-workflow
 
   entrypoint: pipeline
@@ -14,7 +14,7 @@ spec:
     parameters:
 
       - name: image
-        value: "YOUR_REGISTRY/fraud-detector:latest"
+        value: "mokchhedul/fraud-detector:latest"
 
       - name: model-name
         value: "fraud-detector"
@@ -31,7 +31,6 @@ spec:
     - name: pipeline
 
       dag:
-
         tasks:
 
           - name: ingest
@@ -70,6 +69,7 @@ spec:
 
     # ==========================================
     # INGEST
+    # DVC PULL → VERIFY DATA → INGEST
     # ==========================================
 
     - name: ingest
@@ -79,16 +79,58 @@ spec:
         image: "{{workflow.parameters.image}}"
 
         command:
-          - python
+          - sh
+          - -c
 
         args:
-          - src/ingest.py
+          - |
+            set -e
+
+            echo "============================================================"
+            echo "          DVC DATA PULL STARTED"
+            echo "============================================================"
+
+            echo ""
+            echo "Checking DVC installation..."
+            dvc --version
+
+            echo ""
+            echo "Pulling dataset from DVC remote..."
+            dvc pull
+
+            echo ""
+            echo "============================================================"
+            echo "          DVC DATA PULL COMPLETED"
+            echo "============================================================"
+
+            echo ""
+            echo "Checking source dataset..."
+
+            if [ ! -f data/source/transactions.csv ]; then
+              echo "ERROR: data/source/transactions.csv not found"
+              exit 1
+            fi
+
+            echo ""
+            echo "Dataset found:"
+            ls -lh data/source/transactions.csv
+
+            echo ""
+            echo "Running data ingestion..."
+
+            python src/data/ingestion.py
+
+            echo ""
+            echo "============================================================"
+            echo "          DATA INGESTION COMPLETED"
+            echo "============================================================"
 
         envFrom:
           - secretRef:
               name: mlops-secrets
 
         resources:
+
           requests:
             cpu: "250m"
             memory: "512Mi"
@@ -112,13 +154,14 @@ spec:
           - python
 
         args:
-          - src/validate.py
+          - src/data/validation.py
 
         envFrom:
           - secretRef:
               name: mlops-secrets
 
         resources:
+
           requests:
             cpu: "250m"
             memory: "512Mi"
@@ -142,13 +185,14 @@ spec:
           - python
 
         args:
-          - src/preprocess.py
+          - src/data/preprocessing.py
 
         envFrom:
           - secretRef:
               name: mlops-secrets
 
         resources:
+
           requests:
             cpu: "500m"
             memory: "1Gi"
@@ -175,8 +219,7 @@ spec:
           factor: "2"
           maxDuration: "1m"
 
-      timeout:
-        duration: "30m"
+      timeout: "30m"
 
       container:
 
@@ -186,7 +229,7 @@ spec:
           - python
 
         args:
-          - src/train.py
+          - src/training/train.py
 
         envFrom:
           - secretRef:
@@ -217,8 +260,7 @@ spec:
 
     - name: evaluate
 
-      timeout:
-        duration: "10m"
+      timeout: "10m"
 
       container:
 
@@ -228,7 +270,7 @@ spec:
           - python
 
         args:
-          - src/evaluate.py
+          - src/evaluation/evaluate.py
 
         envFrom:
           - secretRef:
@@ -259,7 +301,7 @@ spec:
           - python
 
         args:
-          - src/evaluate.py
+          - src/evaluation/evaluate.py
           - --quality-gate
 
         envFrom:
@@ -291,7 +333,7 @@ spec:
           - python
 
         args:
-          - src/register_model.py
+          - src/model/register_model.py
 
         envFrom:
           - secretRef:
