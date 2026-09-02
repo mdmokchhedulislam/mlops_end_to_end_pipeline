@@ -7,12 +7,13 @@ pyyaml
 
 # Security Patch Fixes
 cryptography>=50.0.0
+diskcache==5.6.3
 
 # Machine Learning
 xgboost
 
-# MLflow (Fix for vulnerabilities)
-mlflow>=3.15.0
+# MLflow
+mlflow
 
 # API
 fastapi
