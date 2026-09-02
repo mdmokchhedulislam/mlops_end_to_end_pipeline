@@ -141,7 +141,7 @@ jobs:
 
       - name: Validate project data
         run: |
-          python -m src.data.validate
+          python -m src.data.validation
 
 
   # ============================================================
