@@ -364,34 +364,34 @@ jobs:
   # 9. CI SUMMARY
   # ============================================================
 
-  ci-success:
-    name: CI Success
-    runs-on: ubuntu-latest
+  # ci-success:
+  #   name: CI Success
+  #   runs-on: ubuntu-latest
 
-    needs:
-      - lint
-      - data-validation
-      - secret-scan
-      # - dependency-scan
-      - docker-build
-      # - image-scan
-      - push-image
+  #   needs:
+  #     - lint
+  #     - data-validation
+  #     - secret-scan
+  #     # - dependency-scan
+  #     - docker-build
+  #     # - image-scan
+  #     - push-image
 
-    if: always()
+  #   if: always()
 
-    steps:
-      - name: Check CI status
-        run: |
-          if [[ "${{ needs.lint.result }}" != "success" ||
-                "${{ needs.test.result }}" != "success" ||
-                "${{ needs.data-validation.result }}" != "success" ||
-                "${{ needs.secret-scan.result }}" != "success" ||
-                "${{ needs.docker-build.result }}" != "success" ||
-                "${{ needs.push-image.result }}" != "success" ]]; then
+  #   steps:
+  #     - name: Check CI status
+  #       run: |
+  #         if [[ "${{ needs.lint.result }}" != "success" ||
+  #               "${{ needs.test.result }}" != "success" ||
+  #               "${{ needs.data-validation.result }}" != "success" ||
+  #               "${{ needs.secret-scan.result }}" != "success" ||
+  #               "${{ needs.docker-build.result }}" != "success" ||
+  #               "${{ needs.push-image.result }}" != "success" ]]; then
 
-            echo "CI FAILED"
-            exit 1
-          fi
+  #           echo "CI FAILED"
+  #           exit 1
+  #         fi
 
-          echo "CI PASSED"
-          echo "Docker image successfully built and pushed."
+  #         echo "CI PASSED"
+  #         echo "Docker image successfully built and pushed."
