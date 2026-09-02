@@ -299,8 +299,8 @@ jobs:
     name: Push Docker Image
     runs-on: ubuntu-latest
 
-    # needs:
-    #   - image-scan
+    needs:
+      - docker-build
 
     # ----------------------------------------------------------
     # IMPORTANT:
