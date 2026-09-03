@@ -51,6 +51,10 @@ stages:
   validate:
     cmd: python src/data/validation.py
     deps:
+    - path: data/raw/transactions.csv
+      hash: md5
+      md5: a1e938daf9b829dcba4fefdb2ec06923
+      size: 139870
     - path: src/data/validation.py
       hash: md5
       md5: 621b165b8507f75884b9f2dce83a3782
