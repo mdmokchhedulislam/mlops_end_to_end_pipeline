@@ -30,3 +30,4 @@ stages:
 
     deps:
       - src/data/validation.py
+      - data/raw/transactions.csv

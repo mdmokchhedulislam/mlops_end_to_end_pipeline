@@ -43,15 +43,21 @@ dist/
 # Data
 # ==========================================
 
-# Raw datasets
+# Raw datasets (DVC-managed, not git-tracked directly)
 data/raw/*
 
-# Processed datasets
+# Processed datasets (DVC-managed, not git-tracked directly)
 data/processed/*
+data/source/*
+
+# data/source/* is intentionally NOT ignored here —
+# transactions.csv there is a plain git-tracked file (not a DVC out),
+# so it must stay trackable by git.
 
 # Keep DVC metadata files
 !data/raw/*.dvc
 !data/processed/*.dvc
+!data/source/*.dvc
 
 # ==========================================
 # Trained Models
