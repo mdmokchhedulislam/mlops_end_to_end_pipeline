@@ -49,6 +49,17 @@ COPY src ./src
 
 
 # ============================================================
+# DVC Project Files (needed for `dvc pull` inside the container)
+# ============================================================
+
+COPY .dvc ./.dvc
+COPY .dvcignore ./.dvcignore
+COPY dvc.yaml ./dvc.yaml
+COPY dvc.lock ./dvc.lock
+COPY params.yaml ./params.yaml
+
+
+# ============================================================
 # Non-root User
 # ============================================================
 
