@@ -9,7 +9,7 @@ import pandas as pd
 # Configuration
 # ============================================================
 
-SOURCE_PATH = Path("data/source/transactions.csv")
+SOURCE_PATH = Path("data/raw/transactions.csv")
 
 RAW_DATA_DIR = Path("data/raw")
 

@@ -151,6 +151,8 @@ jobs:
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
+    needs:
+        - lint
 
     steps:
       - name: Checkout repository

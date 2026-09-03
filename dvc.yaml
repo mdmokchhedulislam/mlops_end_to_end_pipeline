@@ -1,15 +1,15 @@
 
 stages:
 
-  ingest:
-    cmd: python src/data/ingestion.py
+  # ingest:
+  #   cmd: python src/data/ingestion.py
 
-    deps:
-      - src/data/ingestion.py
-      - data/source/transactions.csv
+  #   deps:
+  #     - src/data/ingestion.py
+  #     - data/source/transactions.csv
 
-    outs:
-      - data/raw/transactions.csv
+  #   outs:
+  #     - data/raw/transactions.csv
 
   preprocess:
     cmd: python src/data/preprocessing.py
