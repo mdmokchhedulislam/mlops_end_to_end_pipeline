@@ -1,0 +1,303 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+
+metadata:
+  name: fraud-training-pipeline
+  namespace: mlops
+
+spec:
+  serviceAccountName: mlops-workflow
+
+  entrypoint: pipeline
+
+  arguments:
+    parameters:
+
+      - name: image
+        value: "mokchhedul/fraud-detector:latest"
+
+      - name: model-name
+        value: "fraud-detector"
+
+      - name: experiment-name
+        value: "fraud-detection"
+
+  templates:
+
+    # ============================================================
+    # MAIN DAG
+    # ============================================================
+
+    - name: pipeline
+
+      dag:
+
+        tasks:
+
+          - name: train
+            template: train
+
+          - name: evaluate
+            dependencies:
+              - train
+            template: evaluate
+
+          - name: quality-gate
+            dependencies:
+              - evaluate
+            template: quality-gate
+
+          - name: register-model
+            dependencies:
+              - quality-gate
+            template: register-model
+
+
+    # ============================================================
+    # TRAIN
+    # ============================================================
+
+    - name: train
+
+      retryStrategy:
+
+        limit: "2"
+
+        retryPolicy: OnFailure
+
+        backoff:
+          duration: "10s"
+          factor: "2"
+          maxDuration: "1m"
+
+      timeout: "30m"
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        workingDir: /app
+
+        command:
+          - sh
+          - -c
+
+        args:
+          - |
+            set -e
+
+            echo "=========================================="
+            echo "        DVC DATA PULL - TRAIN"
+            echo "=========================================="
+
+            dvc --version
+
+            echo "Pulling data from DVC remote..."
+
+            dvc pull
+
+            echo "DVC pull completed."
+
+            echo "Checking training data..."
+
+            test -f data/processed/X_train.csv
+            test -f data/processed/y_train.csv
+
+            echo "Training data found."
+
+            ls -lh data/processed/
+
+            echo "=========================================="
+            echo "             TRAINING"
+            echo "=========================================="
+
+            python src/training/train.py
+
+        envFrom:
+
+          - secretRef:
+              name: mlops-secrets
+
+        env:
+
+          - name: MLFLOW_EXPERIMENT_NAME
+            value: "{{workflow.parameters.experiment-name}}"
+
+          - name: MODEL_NAME
+            value: "{{workflow.parameters.model-name}}"
+
+        resources:
+
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+
+
+    # ============================================================
+    # EVALUATE
+    # ============================================================
+
+    - name: evaluate
+
+      timeout: "10m"
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        workingDir: /app
+
+        command:
+          - sh
+          - -c
+
+        args:
+          - |
+            set -e
+
+            echo "=========================================="
+            echo "        DVC DATA PULL - EVALUATE"
+            echo "=========================================="
+
+            dvc --version
+
+            dvc pull
+
+            echo "DVC pull completed."
+
+            echo "Checking evaluation data..."
+
+            test -f data/processed/X_test.csv
+            test -f data/processed/y_test.csv
+
+            echo "Evaluation data found."
+
+            python src/evaluation/evaluate.py
+
+        envFrom:
+
+          - secretRef:
+              name: mlops-secrets
+
+        resources:
+
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+
+
+    # ============================================================
+    # QUALITY GATE
+    # ============================================================
+
+    - name: quality-gate
+
+      timeout: "10m"
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        workingDir: /app
+
+        command:
+          - sh
+          - -c
+
+        args:
+          - |
+            set -e
+
+            echo "=========================================="
+            echo "       DVC DATA PULL - QUALITY GATE"
+            echo "=========================================="
+
+            dvc --version
+
+            dvc pull
+
+            echo "DVC pull completed."
+
+            python src/model/quality_gate.py
+
+        envFrom:
+
+          - secretRef:
+              name: mlops-secrets
+
+        resources:
+
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+
+
+    # ============================================================
+    # MODEL REGISTRATION
+    # ============================================================
+
+    - name: register-model
+
+      timeout: "10m"
+
+      container:
+
+        image: "{{workflow.parameters.image}}"
+
+        workingDir: /app
+
+        command:
+          - sh
+          - -c
+
+        args:
+          - |
+            set -e
+
+            echo "=========================================="
+            echo "       DVC DATA PULL - REGISTER"
+            echo "=========================================="
+
+            dvc --version
+
+            dvc pull
+
+            echo "DVC pull completed."
+
+            echo "=========================================="
+            echo "        MODEL REGISTRATION"
+            echo "=========================================="
+
+            python src/model/register_model.py
+
+        envFrom:
+
+          - secretRef:
+              name: mlops-secrets
+
+        env:
+
+          - name: MODEL_NAME
+            value: "{{workflow.parameters.model-name}}"
+
+        resources:
+
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+
+          limits:
+            cpu: "1"
+            memory: "1Gi"

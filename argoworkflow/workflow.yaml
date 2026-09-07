@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+
+metadata:
+  name: fraud-training
+  namespace: mlops
+
+spec:
+  workflowTemplateRef:
+    name: fraud-training-pipeline
