@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fraud-detector
+  namespace: mlops
+  labels:
+    app: fraud-detector
+
+spec:
+  type: LoadBalancer
+
+  selector:
+    app: fraud-detector
+
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
