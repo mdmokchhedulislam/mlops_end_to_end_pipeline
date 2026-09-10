@@ -2,7 +2,9 @@ from typing import Any
 
 import mlflow
 import pandas as pd
+from dotenv import load_dotenv
 
+load_dotenv()
 from src.config import (
     MLFLOW_EXPERIMENT,
     MLFLOW_TRACKING_URI,

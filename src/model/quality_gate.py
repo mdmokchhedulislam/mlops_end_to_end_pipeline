@@ -2,6 +2,8 @@ from typing import Any
 
 import mlflow
 from mlflow import MlflowClient
+from dotenv import load_dotenv
+load_dotenv()
 
 from src.config import (
     MIN_ACCURACY,

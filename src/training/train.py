@@ -1,200 +1,9 @@
 
-# # test_train.py
-
-# from pathlib import Path
-
-# import mlflow
-# import mlflow.sklearn
-# from sklearn.datasets import make_classification
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.metrics import (
-#     accuracy_score,
-#     f1_score,
-#     precision_score,
-#     recall_score,
-# )
-# from sklearn.model_selection import train_test_split
-
-
-# # ============================================================
-# # Configuration
-# # ============================================================
-
-# MLFLOW_TRACKING_URI = "http://192.168.1.112:5000"
-# EXPERIMENT_NAME = "mlflow-metrics"
-
-
-# # ============================================================
-# # MLflow Setup
-# # ============================================================
-
-# mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-
-# mlflow.set_experiment(EXPERIMENT_NAME)
-
-
-# # ============================================================
-# # Dataset
-# # ============================================================
-
-# X, y = make_classification(
-#     n_samples=2000,
-#     n_features=5,
-#     n_informative=4,
-#     n_redundant=1,
-#     n_classes=2,
-#     random_state=42,
-# )
-
-# X_train, X_test, y_train, y_test = train_test_split(
-#     X,
-#     y,
-#     test_size=0.2,
-#     random_state=42,
-#     stratify=y,
-# )
-
-
-# # ============================================================
-# # Model
-# # ============================================================
-
-# model = RandomForestClassifier(
-#     n_estimators=100,
-#     max_depth=10,
-#     random_state=42,
-#     n_jobs=-1,
-# )
-
-
-# # ============================================================
-# # Training + MLflow Logging
-# # ============================================================
-
-# with mlflow.start_run(run_name="random_forest_metrics_test") as run:
-
-#     # --------------------------------------------------------
-#     # Parameters
-#     # --------------------------------------------------------
-
-#     mlflow.log_params(
-#         {
-#             "algorithm": "random_forest",
-#             "n_estimators": 100,
-#             "max_depth": 10,
-#             "random_state": 42,
-#             "training_samples": len(X_train),
-#             "test_samples": len(X_test),
-#             "feature_count": X.shape[1],
-#         }
-#     )
-
-#     # --------------------------------------------------------
-#     # Train
-#     # --------------------------------------------------------
-
-#     model.fit(X_train, y_train)
-
-#     # --------------------------------------------------------
-#     # Prediction
-#     # --------------------------------------------------------
-
-#     y_pred = model.predict(X_test)
-
-#     # --------------------------------------------------------
-#     # Metrics
-#     # --------------------------------------------------------
-
-#     accuracy = accuracy_score(y_test, y_pred)
-#     precision = precision_score(y_test, y_pred)
-#     recall = recall_score(y_test, y_pred)
-#     f1 = f1_score(y_test, y_pred)
-
-#     # --------------------------------------------------------
-#     # IMPORTANT:
-#     # These are RUN LEVEL metrics.
-#     # --------------------------------------------------------
-
-#     mlflow.log_metrics(
-#         {
-#             "accuracy": accuracy,
-#             "precision": precision,
-#             "recall": recall,
-#             "f1_score": f1,
-#         }
-#     )
-
-#     # --------------------------------------------------------
-#     # Tags
-#     # --------------------------------------------------------
-
-#     mlflow.set_tags(
-#         {
-#             "project": "mlflow-metrics-test",
-#             "pipeline_stage": "training",
-#             "model_name": "random_forest",
-#         }
-#     )
-
-#     # --------------------------------------------------------
-#     # Log Model
-#     # --------------------------------------------------------
-
-#     model_info = mlflow.sklearn.log_model(
-#         sk_model=model,
-#         name="random_forest_model",
-#     )
-
-#     # --------------------------------------------------------
-#     # Print useful information
-#     # --------------------------------------------------------
-
-#     print("=" * 70)
-#     print("MLflow Training Test Completed")
-#     print("=" * 70)
-
-#     print(f"Run ID       : {run.info.run_id}")
-#     print(f"Experiment ID: {run.info.experiment_id}")
-
-#     print()
-#     print("Metrics")
-#     print("-" * 70)
-#     print(f"Accuracy     : {accuracy:.4f}")
-#     print(f"Precision    : {precision:.4f}")
-#     print(f"Recall       : {recall:.4f}")
-#     print(f"F1 Score     : {f1:.4f}")
-
-#     print()
-#     print("Model")
-#     print("-" * 70)
-#     print(f"Model URI    : {model_info.model_uri}")
-
-#     if hasattr(model_info, "model_id"):
-#         print(f"Model ID     : {model_info.model_id}")
-
-#     print("=" * 70)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import logging
 import os
 from typing import Any
+
+from dotenv import load_dotenv
 
 import mlflow
 import mlflow.sklearn
@@ -209,6 +18,12 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
 
+# ============================================================
+# Environment
+# ============================================================
+
+load_dotenv()
+
 from src.config import (
     MLFLOW_EXPERIMENT,
     MLFLOW_TRACKING_URI,
@@ -222,6 +37,11 @@ from src.config import (
 # Logging
 # ============================================================
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -231,27 +51,35 @@ logger = logging.getLogger(__name__)
 
 
 def get_models() -> dict[str, Any]:
+    """
+    Return all machine learning models used for training.
+    """
+
     return {
         "logistic_regression": LogisticRegression(
             max_iter=1000,
             random_state=42,
         ),
+
         "decision_tree": DecisionTreeClassifier(
             max_depth=10,
             random_state=42,
         ),
+
         "random_forest": RandomForestClassifier(
             n_estimators=100,
             max_depth=10,
             random_state=42,
             n_jobs=-1,
         ),
+
         "gradient_boosting": GradientBoostingClassifier(
             n_estimators=100,
             learning_rate=0.1,
             max_depth=3,
             random_state=42,
         ),
+
         "xgboost": XGBClassifier(
             n_estimators=100,
             max_depth=5,
@@ -279,6 +107,10 @@ def load_data(
     pd.Series,
     pd.Series,
 ]:
+    """
+    Load training and testing datasets.
+    """
+
     required_files = [
         x_train_path,
         x_test_path,
@@ -319,7 +151,12 @@ def load_data(
 def log_model_parameters(
     model: Any,
 ) -> None:
+    """
+    Log model parameters to MLflow.
+    """
+
     for name, value in model.get_params().items():
+
         if value is None:
             continue
 
@@ -328,7 +165,8 @@ def log_model_parameters(
                 name,
                 str(value),
             )
-        except Exception as error:  # noqa: BLE001
+
+        except Exception as error:
             logger.warning(
                 "Failed to log MLflow parameter '%s': %s",
                 name,
@@ -347,6 +185,7 @@ def train_model(
     X_train: pd.DataFrame,
     y_train: pd.Series,
 ) -> dict[str, Any]:
+
     print("\n" + "=" * 70)
     print(f"TRAINING: {name}")
     print("=" * 70)
@@ -418,13 +257,16 @@ def train_model(
         print("Logging model to MLflow...")
 
         if isinstance(model, XGBClassifier):
+
             model_info = mlflow.xgboost.log_model(
                 xgb_model=model,
                 artifact_path="model",
                 signature=signature,
                 input_example=X_train.head(5),
             )
+
         else:
+
             model_info = mlflow.sklearn.log_model(
                 sk_model=model,
                 artifact_path="model",
@@ -458,10 +300,13 @@ def train_all_models(
     X_train: pd.DataFrame,
     y_train: pd.Series,
 ) -> list[dict[str, Any]]:
+
     models = get_models()
+
     results = []
 
     for name, model in models.items():
+
         result = train_model(
             name=name,
             model=model,
@@ -475,18 +320,128 @@ def train_all_models(
 
 
 # ============================================================
+# MLflow Experiment Setup
+# ============================================================
+
+
+def setup_mlflow_experiment() -> None:
+    """
+    Configure MLflow tracking and make sure the experiment
+    is active.
+
+    If the experiment exists but is deleted, restore it.
+    If it does not exist, MLflow will create it.
+    """
+
+    print("\n" + "=" * 70)
+    print("MLFLOW SETUP")
+    print("=" * 70)
+
+    print(
+        f"MLflow Tracking URI: {MLFLOW_TRACKING_URI}"
+    )
+
+    print(
+        f"MLflow Experiment: {MLFLOW_EXPERIMENT}"
+    )
+
+    # --------------------------------------------------------
+    # Set Tracking URI
+    # --------------------------------------------------------
+
+    mlflow.set_tracking_uri(
+        MLFLOW_TRACKING_URI
+    )
+
+    # --------------------------------------------------------
+    # Create MLflow Client
+    # --------------------------------------------------------
+
+    client = mlflow.MlflowClient()
+
+    # --------------------------------------------------------
+    # Check Existing Experiment
+    # --------------------------------------------------------
+
+    experiment = client.get_experiment_by_name(
+        MLFLOW_EXPERIMENT
+    )
+
+    if experiment is not None:
+
+        print(
+            f"Experiment ID: {experiment.experiment_id}"
+        )
+
+        print(
+            f"Experiment Status: {experiment.lifecycle_stage}"
+        )
+
+        # ----------------------------------------------------
+        # Restore Deleted Experiment
+        # ----------------------------------------------------
+
+        if experiment.lifecycle_stage == "deleted":
+
+            print(
+                f"Experiment '{MLFLOW_EXPERIMENT}' "
+                "is deleted."
+            )
+
+            print("Restoring experiment...")
+
+            client.restore_experiment(
+                experiment.experiment_id
+            )
+
+            print(
+                f"Experiment '{MLFLOW_EXPERIMENT}' "
+                "restored successfully."
+            )
+
+    else:
+
+        print(
+            f"Experiment '{MLFLOW_EXPERIMENT}' "
+            "does not exist."
+        )
+
+        print(
+            "MLflow will create the experiment."
+        )
+
+    # --------------------------------------------------------
+    # Set Active Experiment
+    # --------------------------------------------------------
+
+    mlflow.set_experiment(
+        MLFLOW_EXPERIMENT
+    )
+
+    print(
+        f"Active MLflow experiment: "
+        f"{MLFLOW_EXPERIMENT}"
+    )
+
+    print("=" * 70)
+
+
+# ============================================================
 # Main
 # ============================================================
 
 
 def main() -> list[dict[str, Any]]:
-    mlflow.set_tracking_uri(
-        MLFLOW_TRACKING_URI
-    )
 
-    mlflow.set_experiment(
-        MLFLOW_EXPERIMENT
-    )
+    # --------------------------------------------------------
+    # MLflow Setup
+    # --------------------------------------------------------
+
+    setup_mlflow_experiment()
+
+    # --------------------------------------------------------
+    # Load Data
+    # --------------------------------------------------------
 
     (
         X_train,
@@ -500,16 +455,42 @@ def main() -> list[dict[str, Any]]:
         Y_TEST_PATH,
     )
 
+    # --------------------------------------------------------
+    # Train All Models
+    # --------------------------------------------------------
+
     results = train_all_models(
         X_train,
         y_train,
     )
 
-    print("\nTraining completed.")
+    print("\n" + "=" * 70)
+    print("TRAINING PIPELINE COMPLETED")
+    print("=" * 70)
+
+    for result in results:
+
+        print(
+            f"Model     : {result['model_name']}"
+        )
+
+        print(
+            f"Run ID    : {result['run_id']}"
+        )
+
+        print(
+            f"Model URI : {result['model_uri']}"
+        )
+
+        print("-" * 70)
 
     return results
 
 
+# ============================================================
+# Entry Point
+# ============================================================
+
+
 if __name__ == "__main__":
     main()
-

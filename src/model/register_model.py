@@ -4,6 +4,9 @@ from typing import Any
 import mlflow
 from mlflow import MlflowClient
 from mlflow.exceptions import MlflowException
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from src.config import (
     MLFLOW_EXPERIMENT,
