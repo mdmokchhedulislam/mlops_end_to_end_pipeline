@@ -1,4 +1,3 @@
-
 import logging
 import os
 from typing import Any
@@ -273,6 +272,24 @@ def train_model(
                 signature=signature,
                 input_example=X_train.head(5),
             )
+
+        # ----------------------------------------------------
+        # IMPORTANT: Persist the *actual* resolvable model_uri
+        # ----------------------------------------------------
+        # Newer MLflow versions store logged models under a
+        # "LoggedModel" entity (e.g. models:/m-<hash>) instead
+        # of the classic runs:/<run_id>/model path. Downstream
+        # steps (evaluate.py, register_model.py) must NEVER
+        # reconstruct the URI themselves — they must read this
+        # tag instead, or they risk pointing at a location that
+        # was never actually written to the artifact store.
+
+        print(f"Actual model_info.model_uri: {model_info.model_uri}")
+
+        mlflow.set_tag(
+            "model_uri",
+            model_info.model_uri,
+        )
 
         # ----------------------------------------------------
         # Result

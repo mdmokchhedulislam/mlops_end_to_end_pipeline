@@ -1,4 +1,3 @@
-
 from typing import Any
 
 import mlflow
@@ -122,6 +121,29 @@ def find_best_model() -> dict[str, Any]:
     )
 
     # --------------------------------------------------------
+    # Model URI
+    # --------------------------------------------------------
+    # IMPORTANT: this MUST come from the 'model_uri' tag set
+    # during training. It must NOT be reconstructed here as
+    # f"runs:/{run_id}/model" — newer MLflow versions log
+    # models as LoggedModel entities (models:/m-<hash>)
+    # rather than under the classic runs:/<run_id>/model
+    # path. Reconstructing it manually can point at a
+    # location that was never actually written to the
+    # artifact store, which is exactly what caused the
+    # production "No such artifact: 'MLmodel'" crash.
+
+    model_uri = tags.get("model_uri")
+
+    if not model_uri:
+        raise RuntimeError(
+            f"Run {best_run.info.run_id} is missing the "
+            "'model_uri' tag. Update train.py to tag the "
+            "model URI at logging time, then re-run the "
+            "training pipeline before registering."
+        )
+
+    # --------------------------------------------------------
     # Result
     # --------------------------------------------------------
 
@@ -132,9 +154,7 @@ def find_best_model() -> dict[str, Any]:
         "precision": metrics["eval_precision"],
         "recall": metrics["eval_recall"],
         "f1_score": metrics["eval_f1_score"],
-        "artifact_uri": (
-            f"runs:/{best_run.info.run_id}/model"
-        ),
+        "artifact_uri": model_uri,
     }
 
     # --------------------------------------------------------
@@ -342,6 +362,36 @@ def register_best_model(
     )
 
     print(production_uri)
+
+    # --------------------------------------------------------
+    # Fail-Fast Validation
+    # --------------------------------------------------------
+    # Load the model right here, right now. If the artifact
+    # is actually missing from the store (the exact bug that
+    # caused the production CrashLoopBackOff), we want the
+    # pipeline to fail LOUDLY here — not weeks later inside a
+    # Kubernetes pod.
+
+    print(
+        "\nValidating that the registered model "
+        "actually loads..."
+    )
+
+    try:
+        mlflow.pyfunc.load_model(production_uri)
+
+    except Exception as error:
+        raise RuntimeError(
+            f"Registered model version {version} FAILED to "
+            f"load from {production_uri}. The artifact is "
+            "missing or unreachable from the artifact store. "
+            "Registration is broken — do NOT deploy this "
+            "version."
+        ) from error
+
+    print(
+        "Validation passed ✓ — model loads successfully."
+    )
 
     return version
 

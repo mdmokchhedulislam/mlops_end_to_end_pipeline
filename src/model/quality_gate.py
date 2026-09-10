@@ -250,9 +250,19 @@ def get_best_evaluated_run() -> dict[str, Any]:
 
     run_id = best_run.info.run_id
 
-    model_uri = (
-        f"runs:/{run_id}/model"
-    )
+    # IMPORTANT: read the actual model_uri tag set during
+    # training instead of reconstructing it as
+    # f"runs:/{run_id}/model" — newer MLflow versions store
+    # logged models under models:/m-<hash>, not the classic
+    # runs:/<run_id>/model path.
+    model_uri = tags.get("model_uri")
+
+    if not model_uri:
+        raise RuntimeError(
+            f"Run {run_id} is missing the 'model_uri' tag. "
+            "Update train.py to tag the model URI at logging "
+            "time, then re-run the training pipeline."
+        )
 
     # --------------------------------------------------------
     # Result

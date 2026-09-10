@@ -162,16 +162,26 @@ def get_training_runs() -> list[Any]:
 def evaluate_model(
     run_id: str,
     model_name: str,
+    model_uri: str,
     X_test: pd.DataFrame,
     y_test: pd.Series,
 ) -> dict[str, Any]:
-    """Load model from MLflow and evaluate it."""
+    """Load model from MLflow and evaluate it.
+
+    IMPORTANT:
+    `model_uri` must come from the run's `model_uri` tag
+    (set during training), NOT be reconstructed here as
+    f"runs:/{run_id}/model". Newer MLflow versions log
+    models as LoggedModel entities (models:/m-<hash>)
+    rather than under the classic runs:/<run_id>/model
+    path, so reconstructing it manually can point at a
+    location that was never actually written to the
+    artifact store.
+    """
 
     print("\n" + "=" * 70)
     print(f"EVALUATING MODEL: {model_name}")
     print("=" * 70)
-
-    model_uri = f"runs:/{run_id}/model"
 
     print(f"Run ID    : {run_id}")
     print(f"Model URI : {model_uri}")
@@ -191,7 +201,7 @@ def evaluate_model(
     except Exception as error:
         raise RuntimeError(
             f"Failed to load model from MLflow. "
-            f"Run ID: {run_id}"
+            f"Run ID: {run_id}, Model URI: {model_uri}"
         ) from error
 
     # --------------------------------------------------------
@@ -326,14 +336,38 @@ def main() -> None:
             "unknown",
         )
 
+        model_uri = run.data.tags.get("model_uri")
+
+        if not model_uri:
+            # Older runs, trained before the model_uri tag was
+            # introduced, won't have this tag. Skip them with a
+            # warning instead of failing the whole evaluation —
+            # only runs missing the tag are affected, valid runs
+            # should still get evaluated and compared.
+            print(
+                f"\n[WARNING] Skipping run {run.info.run_id} "
+                f"({model_name}): missing 'model_uri' tag. "
+                "This run predates the fix and cannot be "
+                "reliably loaded. Re-train it if you need it "
+                "in the comparison."
+            )
+            continue
+
         result = evaluate_model(
             run_id=run.info.run_id,
             model_name=model_name,
+            model_uri=model_uri,
             X_test=X_test,
             y_test=y_test,
         )
 
         results.append(result)
+
+    if not results:
+        raise RuntimeError(
+            "No runs with a valid 'model_uri' tag were found "
+            "to evaluate. Run train.py again."
+        )
 
     # --------------------------------------------------------
     # Comparison
